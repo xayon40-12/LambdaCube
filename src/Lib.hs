@@ -4,25 +4,30 @@ import Data.List ( (\\) )
 import Control.Monad (unless)
 import Prelude hiding (id)
 
-data Kinds = Star | Box deriving (Eq, Read, Show)
 type Sym = String
 data Expr
-    = Var Sym
+    = V Sym
     | Expr :@ Expr
     | (Sym, Expr) :. Expr
-    | Kind Kinds
-    deriving (Eq, Read, Show)
+    | U Int
+    deriving (Eq, Read)
 infixr 2 :.
-infixr 3 :@
-infixr 3 .:
-(.:) :: (Sym, Expr) -> Sym -> Expr
-l .: s = l :. Var s
+infixl 3 :@
+
+instance Show Expr where
+    show (V s) = s
+    show ((V s) :@ x) = s ++ " " ++ show x
+    show (f :@ x) = "(" ++ show f ++ ") " ++ show x
+    show ((s, t) :. e)
+        | null s = show t ++ " -> " ++ show e
+        | otherwise = "(" ++ s ++ ":" ++ show t ++ ") -> " ++ show e
+    show (U i) = "U" ++ show i
 
 freeVars :: Expr -> [Sym]
-freeVars (Var s) = [s]
+freeVars (V s) = [s]
 freeVars (f :@ a) = freeVars f ++ freeVars a
 freeVars ((s, _t) :. e) = freeVars e \\ [s]
-freeVars (Kind _) = []
+freeVars (U _) = []
 
 whnf :: Expr -> Expr
 whnf expr = spine expr []
@@ -34,7 +39,7 @@ whnf expr = spine expr []
 subst :: Sym -> Expr -> Expr -> Expr
 subst s x = sub
     where
-        sub v@(Var s') = if s == s' then x else v
+        sub v@(V s') = if s == s' then x else v
         sub (f :@ x') = sub f :@ sub x'
         sub ((s', t') :. e')
           | s == s' = (s', sub t') :. e'
@@ -43,7 +48,7 @@ subst s x = sub
                 e'' = substVar s' s'' e'
             in (s'', sub t') :. sub e''
           | otherwise = (s', sub t') :. sub e'
-        sub (Kind k) = Kind k
+        sub u@(U _) = u
 
         fsx = freeVars x
         newSym e' s' = loop s'
@@ -52,13 +57,13 @@ subst s x = sub
                 vars = fsx ++ freeVars e'
 
 substVar :: Sym -> Sym -> Expr -> Expr
-substVar s s' = subst s (Var s')
+substVar s s' = subst s (V s')
 
 alphaEq :: Expr -> Expr -> Bool
-alphaEq (Var s) (Var s') = s == s'
+alphaEq (V s) (V s') = s == s'
 alphaEq (f :@ x) (f' :@ x') = alphaEq f f' && alphaEq x x'
 alphaEq ((s, t) :. e) ((s', t') :. e') = alphaEq e (substVar s' s e') && alphaEq t t'
-alphaEq (Kind a) (Kind b) = a == b
+alphaEq (U a) (U b) = a == b
 alphaEq _ _ = False
 
 nf :: Expr -> Expr
@@ -93,7 +98,7 @@ findVar (Env ls) s =
     Nothing -> throwError $ "Connat find variable " ++ s
 
 tCheck :: Env -> Expr -> TC Expr
-tCheck env (Var s) = findVar env s
+tCheck env (V s) = findVar env s
 tCheck env (f :@ x) = do
     tf <- tCheck env f
     case tf of
@@ -105,40 +110,54 @@ tCheck env (f :@ x) = do
         e -> throwError $ "Non-function in application: " ++ show e ++ "."
 tCheck env ((s, t) :. e) = do
     tt <- tCheck env t -- check that the kind is valid
+    ut <- universe env tt
     let env' = extend env s t
-    tse <- tCheck env' $ subst s t e
-    unless ((tt, tse) `elem` allowedKinds) $ throwError $ "Bad abstraction (" ++ show tt ++ "," ++ show tse ++ ") in checking " ++ show ((s, t):.e) ++ "."
-    return tse
-tCheck _ (Kind Star) = return $ Kind Box
-tCheck _ (Kind Box) = throwError "Found Box" -- Universes could be used instead of throwing error
+    te <- tCheck env' e
+    ue <- universe env' te
+    unless (ut >= ue) $ throwError $ "Bad abstraction (" ++ show ut ++ "," ++ show ue ++ ") in checking " ++ show ((s, t):.e) ++ "."
+    return $ (s, t) :. te
+tCheck _ (U a) = return $ U (a+1)
 
-ks :: Expr
-ks = Kind Star
-kb :: Expr
-kb = Kind Box
-allowedKinds :: [(Expr, Expr)]
-allowedKinds = [(ks, ks), (ks, kb), (kb, ks), (kb, kb)]
+universe :: Env -> Expr -> TC Int
+universe _ (U i) = return (i+1)
+universe env (V s) = findVar env s >>= universe env
+universe env (f :@ _) = universe env f
+universe env ((s, t) :. e) = universe (extend env s t) e
 
 typeCheck :: Expr -> TC Expr
 typeCheck = tCheck initialEnv
 
 
 
-higher = ("f", ("t", ks) :. ("", Var "t") .: "t") .: "f"
-id = ("t", ks) :. ("x", Var "t") .: "x"
-zero = ("s", ks) .: "s"
+id :: Expr
+id = ("t", U 1) :. ("x", V "t") :. V "x"
+id' :: Expr
+id' = ("r", U 1) :. ("x", id :@ V "r") :. V "x"
+higher :: Expr
+higher = ("f", ("t", U 1) :. ("", V "t") :. V "t") :. V "f"
+
+zero :: Expr
+zero = ("a", U 1) :. ("b", U 1) :. ("s", V "a") :. ("z", V "b") :. V "z"
 -- zero  = ("s", B) :. s
 -- one = ("s", B :> B) :. ("z", B) :. s :@ z
 -- two = ("s", B :> B) :. ("z", B) :. s :@ s :@ z
 -- three = ("s", B :> B) :. ("z", B) :. s :@ s :@ s :@ z
 -- plus = ("m", B :> B :> B) :. ("n", B :> B :> B) :. ("s", B :> B) :. ("z", B) :. m :@ s :@ (n :@ s :@ z)
 
+showLam :: Sym -> Expr -> IO ()
+showLam s l =
+    case typeCheck l of
+        Right t -> do
+            putStrLn $ s ++ " :: " ++ show t
+            putStrLn $ s ++ " " ++ show l
+        Left err -> print err
+
 someFunc :: IO ()
 someFunc = do
-    print id
-    print $ typeCheck id
-    print $ typeCheck zero
-    print $ typeCheck higher
-    print $ typeCheck $ zero :@ ks
-    print $ typeCheck $ id :@ ks
+    showLam "zero" zero
+    showLam "id" id
+    showLam "id'" id'
+    showLam "higher" higher
+    showLam "test"  $ ("r", U 1) :. id :@ V "r"
+    print $ universe initialEnv higher
 
