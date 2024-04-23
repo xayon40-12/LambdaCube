@@ -3,6 +3,7 @@ module Lib where
 import Data.List ( (\\) )
 import Control.Monad (unless)
 import Prelude hiding (id)
+import Data.Either (fromRight)
 
 type Sym = String
 data Expr
@@ -70,7 +71,7 @@ nf :: Expr -> Expr
 nf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        spine ((s, t) :. e) [] = (s, t) :. nf e
+        spine ((s, t) :. e) [] = (s, nf t) :. nf e
         spine ((s, _t) :. e) (x:xs) = spine (subst s x e) xs
         spine f xs = app f xs
         app f xs = foldl (:@) f (map nf xs)
@@ -104,17 +105,13 @@ tCheck env (f :@ x) = do
     case tf of
         (s, t) :. b -> do
             tx <- tCheck env x
-            -- the magic is that as the Pi type depends of the variable of the lambda it is the type of, its own type must be the same as the lambda
             unless (betaEq tx t) $ throwError "Bad function argument type"
             return $ subst s x b
         e -> throwError $ "Non-function in application: " ++ show e ++ "."
 tCheck env ((s, t) :. e) = do
-    tt <- tCheck env t -- check that the kind is valid
-    ut <- universe env tt
+    _ <- tCheck env t
     let env' = extend env s t
     te <- tCheck env' e
-    ue <- universe env' te
-    unless (ut >= ue) $ throwError $ "Bad abstraction (" ++ show ut ++ "," ++ show ue ++ ") in checking " ++ show ((s, t):.e) ++ "."
     return $ (s, t) :. te
 tCheck _ (U a) = return $ U (a+1)
 
@@ -130,11 +127,13 @@ typeCheck = tCheck initialEnv
 
 
 id :: Expr
-id = ("t", U 1) :. ("x", V "t") :. V "x"
+id = ("t", U 1) :. ("x", V "t") :. U 8 -- V "x"
 id' :: Expr
 id' = ("r", U 1) :. ("x", id :@ V "r") :. V "x"
 higher :: Expr
 higher = ("f", ("t", U 1) :. ("", V "t") :. V "t") :. V "f"
+bigger :: Expr
+bigger = ("f", ("t", U 1) :. ("r", U 4) :. V "r") :. V "f"
 
 zero :: Expr
 zero = ("a", U 1) :. ("b", U 1) :. ("s", V "a") :. ("z", V "b") :. V "z"
@@ -145,12 +144,17 @@ zero = ("a", U 1) :. ("b", U 1) :. ("s", V "a") :. ("z", V "b") :. V "z"
 -- plus = ("m", B :> B :> B) :. ("n", B :> B :> B) :. ("s", B :> B) :. ("z", B) :. m :@ s :@ (n :@ s :@ z)
 
 showLam :: Sym -> Expr -> IO ()
-showLam s l =
+showLam s l' = let l = nf l' in
     case typeCheck l of
         Right t -> do
-            putStrLn $ s ++ " :: " ++ show t
+            putStrLn $ s ++ " :: " ++ show t ++ " | U" ++ show (fromRight (-1) (universe initialEnv t))
             putStrLn $ s ++ " " ++ show l
         Left err -> print err
+
+typeCheckVar :: Expr -> Expr -> TC Bool
+typeCheckVar ty var = do
+    tv <- typeCheck var
+    return $ betaEq ty tv
 
 someFunc :: IO ()
 someFunc = do
@@ -158,6 +162,10 @@ someFunc = do
     showLam "id" id
     showLam "id'" id'
     showLam "higher" higher
-    showLam "test"  $ ("r", U 1) :. id :@ V "r"
-    print $ universe initialEnv higher
+    showLam "bigger" bigger
+    showLam "r" $ U 1
+    showLam "r" $ ("r", U 2) :. V "r"
+    showLam "test"  $ nf $ ("r", U 1) :. ("l", V "r") :. id :@ V "r" :@ V "l"
+    print $ betaEq (("", V "t") :. V "t") (("", V "t") :. V "t")
+    print $ typeCheckVar (("t", U 1) :. ("", V "t") :. V "t") (("r", U 1) :. ("x", V "r") :. V "x")
 
