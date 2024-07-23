@@ -50,12 +50,14 @@ ISucc: (n: CNat) -> (in: INat n) -> (P: CNat -> *) -> (s: (n: CNat) -> P n -> P 
 Nat: * = Pair CNat (n: CNat -> INat n) 
 nat: (c: CNat) -> (i: INat c) -> Nat = pair CNat (n: CNat -> INat n) c i
 c: (n: Nat) -> CNat = (first CNat (n: CNat -> INat n) n)
-i: (n: Nat) -> INat = (second CNat (n: CNat -> INat n) n)
+i: (n: Nat) -> INat (c n) = (second CNat (n: CNat -> INat n) n)
 
 Zero: Nat = pair CNat (n: CNat -> INat n) CZero IZero
 Succ: (n: Nat) -> Nat = nat (CSucc (c n)) (ISucc (c n) (i n))
 
 c2nat: (n: CNat) -> Nat = n Nat Succ Zero
+c2nat_reflection: (n: Nat) -> Equal Nat (c2nat (c n)) n
+  = i n ((n: CNat) -> Equal CNat (c (c2nat n)) n) ??? (Refl CNat CZero)
 
 Ind: (P: Nat -> *) -> (s: (n: Nat) -> P n -> P (Succ n)) -> (z: P Zero) -> (n: Nat) -> P n
   = ???
