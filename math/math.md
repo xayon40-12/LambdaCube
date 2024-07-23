@@ -14,18 +14,18 @@ expr1: U<i> => ((a: expr1) -> expr2): U<i+1>
 ## Dependent pair
 ```
 Pair: *
-  = (A: *) -> (B: A->*) -> 
-    (P: (A: *) -> (a: A) -> (B: A->*) -> *) -> (p: (a: A) -> (b: B a) -> P A a B)
+  = (A: *) -> (B: A -> *) -> 
+    (P: (A: *) -> (a: A) -> (B: A -> *) -> *) -> (p: (a: A) -> (b: B a) -> P A a B)
 pair:
-  (A: *) -> (B: A->*) -> (a: A) -> (b: B a) ->
-  (P: (A: *) -> (a: A) -> (B: A->*) -> *) -> (p: (a: A) -> (b: B a) -> P A a B) -> P A a B
+  (A: *) -> (B: A -> *) -> (a: A) -> (b: B a) ->
+  (P: (A: *) -> (a: A) -> (B: A -> *) -> *) -> (p: (a: A) -> (b: B a) -> P A a B) -> P A a B
   = p a b
 first:
-  (A: *) -> (B: A->*) -> (p: Pair A B) -> A
-  = p ((A: *) -> (a: A) -> (B: A->*) -> A) ((a: A) -> (b: B a) -> a)
+  (A: *) -> (B: A -> *) -> (p: Pair A B) -> A
+  = p ((A: *) -> (a: A) -> (B: A -> *) -> A) ((a: A) -> (b: B a) -> a)
 second:
-  (A: *) -> (B: A->*) -> (p: Pair A B) -> B (first A B p)
-  = p ((A: *) -> (a: A) -> (B: A->*) -> B a) ((a: A) -> (b: B a) -> b)
+  (A: *) -> (B: A -> *) -> (p: Pair A B) -> B (first A B p)
+  = p ((A: *) -> (a: A) -> (B: A -> *) -> B a) ((a: A) -> (b: B a) -> b)
 ```
 
 ## Equal
