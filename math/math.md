@@ -38,6 +38,12 @@ expr1: U<i>, expr2: U<j> => ((a: expr1) -> expr2): U<i>   or is it U<max(i,j)> ?
 ```
 ## Examples
 
+### Void
+The empty type
+```
+Void = <i> (A: U i) -> A
+```
+
 ### Dependent pair
 ```
 Pair = <i> (A: U i) -> (B: A -> U i) -> U i+1 :>
@@ -56,6 +62,9 @@ Equal = <i> (A: U i) -> (a: A) -> (b: A) -> U i+1 :>
   (P: A -> U i) -> (p: P a) -> P b
 Refl = <i> (A: U i) -> (a: A) -> Equal A a a :>
   (P: A -> U i) -> (p: P a) -> p
+
+uniq_refl = <i> (A: U i) -> (a: A) -> (b: A) -> Pair (Equal A a b) ((e: Equal A a b) -> Equal (Equal A a b) e (Refl A a)) -> Void :>
+  ???
 
 symm = <i> (A: U i) -> (a: A) -> (b: A) -> (e: Equal A a b) -> Equal A b a :>
   (P: A -> U i) -> e ((x: A) -> ((p: P x) -> P a) (Refl A a P)
