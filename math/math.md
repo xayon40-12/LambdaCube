@@ -56,6 +56,7 @@ second = <i> (A: U i) -> (B: A -> U i) -> (p: Pair A B) -> B (first A B p) :>
   p (B a) ((a: A) -> (b: B a) -> b)
 ```
 
+
 ### Equal
 ```
 Equal = <i> (A: U i) -> (a: A) -> (b: A) -> U i+1 :>
@@ -63,8 +64,8 @@ Equal = <i> (A: U i) -> (a: A) -> (b: A) -> U i+1 :>
 Refl = <i> (A: U i) -> (a: A) -> Equal A a a :>
   (P: A -> U i) -> (p: P a) -> p
 
-uniq_refl = <i> (A: U i) -> (a: A) -> (b: A) -> Pair (Equal A a b) ((e: Equal A a b) -> Equal (Equal A a b) e (Refl A a)) -> Void :>
-  ???
+uniq_refl = <i> (A: U i) -> (a: A) -> (b: A) -> E = Equal A a b; (e: E) -> Equal E e (Refl A a) :>
+  e (P': (c: A) -> (e: Equal A a c ) -> (P: E -> U i) -> (p: P e) -> P (Refl A a)) ((e: Equal A a a) -> (P: E -> U i) -> (p: P e) -> ???) e
 
 symm = <i> (A: U i) -> (a: A) -> (b: A) -> (e: Equal A a b) -> Equal A b a :>
   (P: A -> U i) -> e ((x: A) -> ((p: P x) -> P a) (Refl A a P)
