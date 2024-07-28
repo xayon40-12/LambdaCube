@@ -44,6 +44,13 @@ The empty type
 Void = <i> (A: U i) -> A
 ```
 
+### Union
+```
+Union = <i> (A: U i) -> (B: U i) -> (P: U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> P
+Left = <i> (A: U i) -> (B: U i) -> (a: A) -> Union A B :> (P: U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> l a
+Right = <i> (A: U i) -> (B: U i) -> (b: B) -> Union A B :> (P: U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> r b
+```
+
 ### Dependent pair
 ```
 Pair = <i> (A: U i) -> (B: A -> U i) -> U i+1 :>
