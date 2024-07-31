@@ -18,6 +18,11 @@ U S+1
 expr[l] :> expr[l]
 expr[l] expr[l]
 any(l)
+(S: expr[l] /\ expr[l,S])
+expr[l].1
+expr[l].2
+(expr[l])
+Beta expr[l] expr[l]
 ```
 The `;` can be replaced by a newline followed by at least one space.
 Each line in order correspond to:
@@ -27,12 +32,26 @@ Each line in order correspond to:
 - same as previous line but one rank higher
 - decleration of a dependent lambda
 - typing of the right expression with the first one as its type
-- application
+- application, left associative
 - a symbol available in the context l
+- a dependent intersection
+- term of the dependent intersection converted to the type of the left part
+- term `t` of the dependent intersection converted to the type of the right part (where the symbol `S` is replaced by `t.1`)
+- parens to force a particular association order
+- type conversion of a value between two beta-equivalent types
 
 ## Dependent intersection
 For a value `a` of type `A` and a value `b` of type `B a`, the pair `a ^ b` is of type `(a: A /\ B a)` if the erasure of `a` and `b` are equal.
 A value `x` of type `(a: A /\ B a)` can be changed to be of type `A` with the notation `x.1` and it can be changed to be of type `B x.1` with notation `x.2`. In both cases, the value can be returned to the original intersection type by appending a `.0`. Thus `x.1.0` and `x.2.0` are both of type `(a: A /\ B a)`.
+
+## Beta equivalence
+Two values (term or type) are beta-equivalent if their erasure is the same. for instance:
+```
+(c2nat (CSucc n)).1 => (CSucc n) Nat Succ Zero => (P -> s -> z -> s (n P s z)) Nat Succ Zero => Succ (n Nat Succ Zero) => P -> s -> z -> s ((n Nat Succ Zero) P s z)
+CSucc (c2nat n).1 => CSucc (n Nat Succ Zero) => P -> s -> z -> s ((n Nat Succ Zero) P s z)
+```
+
+If two types `A` and `B` are beta-equivalent `A =_beta B`, then a value `a` of type `A` can be converted to type `B` with `Beta a`.
 
 ## Rules
 Universes 'U i' are cumulative. So for any j > i, U i: U j.
@@ -106,7 +125,10 @@ Succ = (n: Nat) -> Nat :> (CSucc n.1) ^ (ISucc n.1 n.2)
 
 c2nat = (n: CNat) -> Nat :> n Nat Succ Zero
 c2nat_reflection = (n: Nat) -> Equal Nat (c2nat n.1) n :> 
-  n.2 ((n: CNat) -> Equal CNat (c2nat n).1 n) ((n: CNat) -> (p: Equal CNat (c2nat n).1 n) -> (P: (n: CNat) -> U i) -> p (n: CNat -> (p: P (c2nat (CSucc n)).1) -> P (CSucc n)) (c: )) (Refl CNat CZero)
+  n.2 
+    ((n: CNat) -> Equal CNat (c2nat n).1 n)
+    ((n: CNat) -> (p: Equal CNat (c2nat n).1 n) -> (P: (n: CNat) -> U i) -> (ps: P (c2nat (CSucc n)).1) -> p (n: CNat -> P (CSucc n)) (Beta ps))
+    (Refl CNat CZero)
 
 Ind = <i> (P: Nat -> U i) -> (s: (n: Nat) -> P n -> P (Succ n)) -> (z: P Zero) -> (n: Nat) -> P n :>
   ???
