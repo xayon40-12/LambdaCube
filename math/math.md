@@ -80,11 +80,11 @@ Right = <i> (A: U i) -> (B: U i) -> (b: B) -> Union A B :> (P: U i) -> (l: (a: A
 ```
 Pair = <i> (A: U i) -> (B: A -> U i) -> U i+1 :>
   (P: U i) -> (p: (a: A) -> (b: B a) -> P) -> P
-pair = <i> (A: U i) -> (B: A -> U i) -> (a: A) -> (b: B a) -> Pair A B :>
+pair = <i> (A: U i) -> (B: A -> U i) -> (a: A) -> (b: B a) -> Pair i A B :>
   (P: U i) -> (p: (a: A) -> (b: B a) -> P) -> p a b
-first = <i> (A: U i) -> (B: A -> U i) -> (p: Pair A B) -> A :>
+first = <i> (A: U i) -> (B: A -> U i) -> (p: Pair i A B) -> A :>
   p A ((a: A) -> (b: B a) -> a)
-second = <i> (A: U i) -> (B: A -> U i) -> (p: Pair A B) -> B (first A B p) :>
+second = <i> (A: U i) -> (B: A -> U i) -> (p: Pair i A B) -> B (first i A B p) :>
   p (B a) ((a: A) -> (b: B a) -> b)
 ```
 
@@ -92,39 +92,39 @@ second = <i> (A: U i) -> (B: A -> U i) -> (p: Pair A B) -> B (first A B p) :>
 ```
 Equal = <i> (A: U i) -> (a: A) -> (b: A) -> U i+1 :>
   (P: (a: A) -> U i) -> (p: P a) -> P b
-Refl = <i> (A: U i) -> (a: A) -> Equal A a a :>
+Refl = <i> (A: U i) -> (a: A) -> Equal i A a a :>
   (P: (a: A) -> U i) -> (p: P a) -> p
 
-rho = <i> (T: U i) -> (t1: T) -> (t2: T) -> (e: Equal T t1 t2) -> (Tt: (t: T) -> U i) -> (t: Tt t1) -> Tt t2 :>
+rho = <i> (T: U i) -> (t1: T) -> (t2: T) -> (e: Equal i T t1 t2) -> (Tt: (t: T) -> U i) -> (t: Tt t1) -> Tt t2 :>
   e (P: (t: T) -> Tt t) t
 
-symm = <i> (A: U i) -> (a: A) -> (b: A) -> (e: Equal A a b) -> Equal A b a :>
-  (P: (a: A) -> U i) -> e ((x: A) -> ((p: P x) -> P a) (Refl A a P)
+symm = <i> (A: U i) -> (a: A) -> (b: A) -> (e: Equal i A a b) -> Equal i A b a :>
+  (P: (a: A) -> U i) -> e ((x: A) -> ((p: P x) -> P a) (Refl i A a P)
 
 
-uniq = <i> (A: U i) -> (a: A) -> E = Equal A a a; (e: E) -> Equal E e (Refl A a) :>
+uniq = <i> (A: U i) -> (a: A) -> E = Equal i A a a; (e: E) -> Equal i E e (Refl i A a) :>
   (P: (e: E) -> U i) -> (p: P e) -> ???
 
-uniq_refl = <i> (A: U i) -> (a: A) -> (b: A) -> E = Equal A a b; (e: E) -> Equal E e (Refl A a) :>
-  e (P': (c: A) -> (e: Equal A a c ) -> (P: E -> U i) -> (p: P e) -> P (Refl A a)) ((e: Equal A a a) -> (P: E -> U i) -> (p: P e) -> ???) e
+uniq_refl = <i> (A: U i) -> (a: A) -> (b: A) -> E = Equal i A a b; (e: E) -> Equal i E e (Refl i A a) :>
+  e (P': (c: A) -> (e: Equal i A a c ) -> (P: E -> U i) -> (p: P e) -> P (Refl i A a)) ((e: Equal i A a a) -> (P: E -> U i) -> (p: P e) -> ???) e
 ```
 
 ### Nat
 ```
 CNat = <i> (P: U i) -> (s: P -> P) -> (z: P) -> U i :> P
-CZero = <i> (P: U i) -> (s: P -> P) -> (z: P) -> CNat P s z :> z
-CSucc = (n: CNat) -> <i> (P: U i) -> (s: P -> P) -> (z: P) -> CNat P s z :> s (n P s z)
+CZero = <i> (P: U i) -> (s: P -> P) -> (z: P) -> CNat i P s z :> z
+CSucc = (n: CNat) -> <i> (P: U i) -> (s: P -> P) -> (z: P) -> CNat i P s z :> s (n i P s z)
 
 INat = (n: CNat) -> <i> (P: CNat -> U i) -> (s: (n: CNat) -> P n -> P (CSucc n)) -> (z: P CZero) -> U i :> P n
-IZero = <i> (P: CNat -> U i) -> (s: (n: CNat) -> P n -> P (CSucc n)) -> (z: P CZero) -> INat CZero P s z :> z
-ISucc = (n: CNat) -> (in: INat n) -> <i> (P: CNat -> U i) -> (s: (n: CNat) -> P n -> P (CSucc n)) -> (z: P CZero) -> INat (CSucc n) P s z :> s n (in n P s z)
+IZero = <i> (P: CNat -> U i) -> (s: (n: CNat) -> P n -> P (CSucc n)) -> (z: P CZero) -> INat CZero i P s z :> z
+ISucc = (n: CNat) -> (in: INat n) -> <i> (P: CNat -> U i) -> (s: (n: CNat) -> P n -> P (CSucc n)) -> (z: P CZero) -> INat (CSucc n) i P s z :> s n (in i P s z)
 
-Nat = (n: CNat /\ INat n)
-Zero = Nat :> CZero ^ IZero
-Succ = (n: Nat) -> Nat :> (CSucc n.1) ^ (ISucc n.1 n.2)
+Nat = <i> (n: CNat i /\ INat n i)
+Zero = Nat :> <i> CZero i ^ IZero i
+Succ = (n: Nat) -> Nat :> (CSucc (n i).1) ^ (ISucc n.1 n.2)
 
-c2nat = (n: CNat) -> Nat :> n Nat Succ Zero
-c2nat_reflection = (n: Nat) -> Equal Nat (c2nat n.1) n :> 
+c2nat = (n: CNat) -> Nat :> <i> n i Nat Succ Zero
+c2nat_reflection = (n: Nat) -> <i> Equal i Nat (c2nat n.1) n :> 
   n.2 
     ((n: CNat) -> Equal CNat (c2nat n).1 n)
     ((n: CNat) -> (p: Equal CNat (c2nat n).1 n) -> (P: (n: CNat) -> U i) -> (ps: P (c2nat (CSucc n)).1) -> p (n: CNat -> P (CSucc n)) (Beta ps))
