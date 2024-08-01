@@ -1,4 +1,4 @@
-module Lib where
+module Lib (module Lib) where
 
 import Data.List ( (\\) )
 import Control.Monad (unless)
@@ -9,37 +9,37 @@ type Sym = String
 data Expr
     = S Sym
     | Expr :@ Expr
-    | Expr ::: Expr
-    | (Sym, Expr) :. Expr
+    | Expr ::> Expr
+    | (Sym, Expr) :-> Expr
     | U Int
     deriving (Eq, Read)
-infixr 2 :.
+infixr 2 :->
 infixl 8 :@
-infix 6 :::
+infix 6 ::>
 
 instance Show Expr where
     show (S s) = s
     show ((S s) :@ x) = s ++ " " ++ show x
     show (f :@ x) = "(" ++ show f ++ ") " ++ show x
-    show ((s, t) :. e)
+    show ((s, t) :-> e)
         | null s = show t ++ " -> " ++ show e
         | otherwise = "(" ++ s ++ " : " ++ show t ++ ") -> " ++ show e
-    show (e ::: t) = show e ++ " : " ++ show t
+    show (t ::> e) = show e ++ " : " ++ show t
     show (U i) = "U" ++ show i
 
 freeVars :: Expr -> [Sym]
 freeVars (S s) = [s]
 freeVars (f :@ a) = freeVars f ++ freeVars a
-freeVars (e ::: t) = freeVars e ++ freeVars t
-freeVars ((s, _t) :. e) = freeVars e \\ [s]
+freeVars (t ::> e) = freeVars e ++ freeVars t
+freeVars ((s, _t) :-> e) = freeVars e \\ [s]
 freeVars (U _) = []
 
 whnf :: Expr -> Expr
 whnf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        spine (e ::: _) xs = spine e xs
-        spine ((s, _t) :. e) (x:xs) = spine (subst s x e) xs
+        spine (_ ::> e) xs = spine e xs
+        spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
         spine f xs = foldl (:@) f xs
 
 subst :: Sym -> Expr -> Expr -> Expr
@@ -47,14 +47,14 @@ subst s x = sub
     where
         sub v@(S s') = if s == s' then x else v
         sub (f :@ x') = sub f :@ sub x'
-        sub (e ::: t) = sub e ::: sub t
-        sub ((s', t') :. e')
-          | s == s' = (s', sub t') :. e'
+        sub (t ::> e) = sub t ::> sub e
+        sub ((s', t') :-> e')
+          | s == s' = (s', sub t') :-> e'
           | s' `elem` fsx =
             let s'' = newSym e' s'
                 e'' = substVar s' s'' e'
-            in (s'', sub t') :. sub e''
-          | otherwise = (s', sub t') :. sub e'
+            in (s'', sub t') :-> sub e''
+          | otherwise = (s', sub t') :-> sub e'
         sub u@(U _) = u
 
         fsx = freeVars x
@@ -69,8 +69,8 @@ substVar s s' = subst s (S s')
 alphaEq :: Expr -> Expr -> Bool
 alphaEq (S s) (S s') = s == s'
 alphaEq (f :@ x) (f' :@ x') = alphaEq f f' && alphaEq x x'
-alphaEq (e ::: t) (e' ::: t') = alphaEq e e' && alphaEq t t'
-alphaEq ((s, t) :. e) ((s', t') :. e') = alphaEq e (substVar s' s e') && alphaEq t t'
+alphaEq (t ::> e) (t' ::> e') = alphaEq e e' && alphaEq t t'
+alphaEq ((s, t) :-> e) ((s', t') :-> e') = alphaEq e (substVar s' s e') && alphaEq t t'
 alphaEq (U a) (U b) = a == b
 alphaEq _ _ = False
 
@@ -78,10 +78,10 @@ nf :: Expr -> Expr
 nf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        spine (e ::: t) [] = nf e ::: nf t
-        spine (e ::: _) xs = spine e xs
-        spine ((s, t) :. e) [] = (s, nf t) :. nf e
-        spine ((s, _t) :. e) (x:xs) = spine (subst s x e) xs
+        spine (t ::> e) [] = nf t ::> nf e
+        spine (_ ::> e) xs = spine e xs
+        spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
+        spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
         spine f xs = app f xs
         app f xs = foldl (:@) f (map nf xs)
 
@@ -112,28 +112,28 @@ tCheck env (S s) = findVar env s
 tCheck env (f :@ x) = do
     tf <- tCheck env f
     case tf of
-        (s, t) :. b -> do
+        (s, t) :-> b -> do
             tx <- tCheck env x
             unless (betaEq tx t) $ throwError "Bad function argument type"
             return $ subst s x b
         e -> throwError $ "Non-function in application (" ++ show (f :@ x) ++ "): " ++ show e ++ "."
-tCheck env (e ::: t) = do
+tCheck env (t ::> e) = do
     te <- tCheck env e
-    unless (betaEq te t) $ throwError $ "Type missmatch (" ++ show te ++ "," ++ show t ++ ") in " ++ show (e ::: t) ++ "."
+    unless (betaEq te t) $ throwError $ "Type missmatch (" ++ show te ++ "," ++ show t ++ ") in " ++ show (t ::> e) ++ "."
     return t
-tCheck env ((s, t) :. e) = do
+tCheck env ((s, t) :-> e) = do
     _ <- tCheck env t
     let env' = extend env s t
     te <- tCheck env' e
-    return $ (s, t) :. te
+    return $ (s, t) :-> te
 tCheck _ (U a) = return $ U (a+1)
 
 universe :: Env -> Expr -> TC Int
 universe _ (U i) = return (i+1)
 universe env (S s) = findVar env s >>= universe env
 universe env (f :@ _) = universe env f
-universe env (e ::: _) = universe env e
-universe env ((s, t) :. e) = universe (extend env s t) e
+universe env (_ ::> e) = universe env e
+universe env ((s, t) :-> e) = universe (extend env s t) e
 
 typeCheck :: Expr -> TC Expr
 typeCheck = tCheck initialEnv
@@ -141,16 +141,16 @@ typeCheck = tCheck initialEnv
 
 
 id :: Expr
-id = ("t", U 1) :. ("x", S "t") :. S "x" ::: S "t"
+id = ("t", U 1) :-> ("x", S "t") :-> S "t" ::> S "x"
 id' :: Expr
-id' = ("r", U 1) :. ("x", id :@ S "r") :. S "x"
+id' = ("r", U 1) :-> ("x", id :@ S "r") :-> S "x"
 higher :: Expr
-higher = ("f", ("t", U 1) :. ("", S "t") :. S "t") :. S "f"
+higher = ("f", ("t", U 1) :-> ("", S "t") :-> S "t") :-> S "f"
 bigger :: Expr
-bigger = ("f", ("t", U 1) :. ("r", U 4) :. S "r") :. S "f"
+bigger = ("f", ("t", U 1) :-> ("r", U 4) :-> S "r") :-> S "f"
 
 zero :: Expr
-zero = ("a", U 1) :. ("b", U 1) :. ("s", S "a") :. ("z", S "b") :. S "z"
+zero = ("a", U 1) :-> ("b", U 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
 -- zero  = ("s", B) :. s
 -- one = ("s", B :> B) :. ("z", B) :. s :@ z
 -- two = ("s", B :> B) :. ("z", B) :. s :@ s :@ z
@@ -178,8 +178,8 @@ someFunc = do
     showLam "higher" higher
     showLam "bigger" bigger
     showLam "r" $ U 1
-    showLam "r" $ ("r", U 2) :. S "r"
-    showLam "test"  $ nf $ ("r", U 1) :. ("l", S "r") :. id :@ S "r" :@ S "l"
-    print $ betaEq (("", S "t") :. S "t") (("", S "t") :. S "t")
-    print $ typeCheckVar (("t", U 1) :. ("", S "t") :. S "t") (("r", U 1) :. ("x", S "r") :. S "x")
+    showLam "r" $ ("r", U 2) :-> S "r"
+    showLam "test"  $ nf $ ("r", U 1) :-> ("l", S "r") :-> id :@ S "r" :@ S "l"
+    print $ betaEq (("", S "t") :-> S "t") (("", S "t") :-> S "t")
+    print $ typeCheckVar (("t", U 1) :-> ("", S "t") :-> S "t") (("r", U 1) :-> ("x", S "r") :-> S "x")
 
