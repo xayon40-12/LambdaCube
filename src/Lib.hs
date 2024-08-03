@@ -4,16 +4,18 @@ import Data.List ( (\\), intercalate )
 import Control.Monad (unless)
 import Prelude hiding (id)
 import Data.Either (fromRight)
-import Data.Map (Map, singleton, insert, delete, toList, keys)
-import qualified Data.Map as Map
+import Data.Map.Strict (Map, singleton, insert, delete, toList, keys)
+import qualified Data.Map.Strict as Map
+import Data.Maybe (fromMaybe)
 
 type Sym = String
+type Levels = Map Sym Int
 data Expr
     = S Sym -- Symbol
     | Expr :@ Expr -- Application
     | Expr ::> Expr -- Left typing: Type ::> term
     | (Sym, Expr) :-> Expr -- Dependent lambda
-    | Um (Map Sym Int) -- Universe where the level is the max of each Sym+Int
+    | Um Levels -- Universe where the level is the max of each Sym+Int
     | L -- Type for unvirse level
     deriving (Eq, Read)
 infixr 2 :->
@@ -32,7 +34,7 @@ instance Show Expr where
     show (Um l) = "U " ++ showL l
     show L = "L"
 
-showL :: Map Sym Int -> String
+showL :: Levels -> String
 showL m = showm (toList m)
     where
         showm [] = ""
@@ -90,14 +92,26 @@ subst s x = sub
 substVar :: Sym -> Sym -> Expr -> Expr
 substVar s s' = subst s (S s')
 
-alphaEq :: Expr -> Expr -> Bool
-alphaEq (S s) (S s') = s == s'
-alphaEq (f :@ x) (f' :@ x') = alphaEq f f' && alphaEq x x'
-alphaEq (t ::> e) (t' ::> e') = alphaEq e e' && alphaEq t t'
-alphaEq ((s, t) :-> e) ((s', t') :-> e') = alphaEq e (substVar s' s e') && alphaEq t t'
-alphaEq (Um ls) (Um ls') = ls == ls' -- FIXME: actually when used in tCheck we want a directional operator that checks that all the elements of ls must be in ls' and they should have a smaller or equal Int
-alphaEq L L = True
-alphaEq _ _ = False
+data Direction = Symmetric | Directional
+
+alphaEq :: Direction -> Expr -> Expr -> Bool
+alphaEq _ (S s) (S s') = s == s'
+alphaEq d (f :@ x) (f' :@ x') = alphaEq d f f' && alphaEq d x x'
+alphaEq d (t ::> e) (t' ::> e') = alphaEq d e e' && alphaEq d t t'
+alphaEq d ((s, t) :-> e) ((s', t') :-> e') = alphaEq d e (substVar s' s e') && alphaEq d t t'
+alphaEq Symmetric (Um ls) (Um ls') = ls == ls'
+alphaEq Directional (Um ls) (Um ls') = universeValid ls ls'
+alphaEq _ L L = True
+alphaEq _ _ _ = False
+
+-- first value correspond to the expected level, so the largest one in the case of cumulative universes
+universeValid :: Levels -> Levels -> Bool
+universeValid l1 l2 = fromMaybe False (req (toList l2))
+    where
+        req [] = Nothing
+        req [l] = iner l
+        req (l:ls) = iner l >>= \b -> (b||) <$> req ls
+        iner (l, i) = (i<=) <$> Map.lookup l l1
 
 nf :: Expr -> Expr
 nf expr = spine expr []
@@ -111,7 +125,11 @@ nf expr = spine expr []
         app f xs = foldl (:@) f (map nf xs)
 
 betaEq :: Expr -> Expr -> Bool
-betaEq e1 e2 = alphaEq (nf e1) (nf e2)
+betaEq e1 e2 = alphaEq Symmetric (nf e1) (nf e2)
+
+-- In case it is used to check that the type of a term correspond to an expected type, the expeted type should be provided first and the term type second.
+betaEqD :: Expr -> Expr -> Bool
+betaEqD e1 e2 = alphaEq Directional (nf e1) (nf e2)
 
 erased :: Expr -> Expr
 erased (S s) = S s
@@ -122,7 +140,10 @@ erased (Um ls) = Um ls
 erased L = L
 
 erasedBetaEq :: Expr -> Expr -> Bool
-erasedBetaEq e1 e2 = alphaEq (erased . nf $ e1) (erased . nf $ e2)
+erasedBetaEq e1 e2 = alphaEq Symmetric (erased . nf $ e1) (erased . nf $ e2)
+
+erasedBetaEqD :: Expr -> Expr -> Bool
+erasedBetaEqD e1 e2 = alphaEq Directional (erased . nf $ e1) (erased . nf $ e2)
 
 newtype Env = Env [(Sym, Expr)] deriving (Show)
 
@@ -150,12 +171,12 @@ tCheck env (f :@ x) = do
     case tf of
         (s, t) :-> b -> do
             tx <- tCheck env x
-            unless (betaEq tx t) $ throwError "Bad function argument type"
+            unless (betaEqD t tx) $ throwError "Bad function argument type"
             return $ subst s x b
         e -> throwError $ "Non-function in application (" ++ show (f :@ x) ++ "): " ++ show e ++ "."
 tCheck env (t ::> e) = do
     te <- tCheck env e
-    unless (betaEq te t) $ throwError $ "Type missmatch (" ++ show te ++ "," ++ show t ++ ") in " ++ show (t ::> e) ++ "."
+    unless (betaEqD t te) $ throwError $ "Type missmatch (" ++ show t ++ "," ++ show te ++ ") in " ++ show (t ::> e) ++ "."
     return t
 tCheck env ((s, t) :-> e) = do
     _ <- tCheck env t
@@ -165,7 +186,7 @@ tCheck env ((s, t) :-> e) = do
 tCheck _ (Um ls) = return $ Um ((+1) <$> ls)
 tCheck _ L = return $ Um (singleton "" 0)
 
-universe :: Env -> Expr -> TC (Map Sym Int)
+universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
 universe _ (Um ls) = return ((+1) <$> ls)
 universe env (S s) = findVar env s >>= universe env
@@ -173,27 +194,44 @@ universe env (f :@ _) = universe env f
 universe env (_ ::> e) = universe env e
 universe env ((s, t) :-> e) = universe (extend env s t) e -- FIXME: check that this is correct
 
+maxLevel :: Levels -> Levels -> Levels
+maxLevel l1 l2 = lmax l1 (toList l2)
+    where
+        lmax acc [] = acc
+        lmax acc ((l, i):ls) = lmax (Map.insertWith max l i acc) ls
+
 typeCheck :: Expr -> TC Expr
 typeCheck = tCheck initialEnv
 
-u :: Int -> Expr
-u i = Um (singleton "" i)
-us :: Sym -> Int -> Expr
-us l i = Um (singleton l i)
+lv :: Sym -> Int -> Levels
+lv = singleton
+
+ui :: Int -> Expr
+ui i = Um (singleton "" i)
+us :: Sym -> Expr
+us l = Um (singleton l 0)
+u :: Sym -> Int -> Expr
+u l i = Um (singleton l i)
 
 id :: Expr
-id = ("t", u 1) :-> ("x", S "t") :-> S "t" ::> S "x"
+id = ("t", ui 1) :-> ("x", S "t") :-> S "t" ::> S "x"
 id' :: Expr
-id' = ("r", u 1) :-> ("x", id :@ S "r") :-> S "x"
+id' = ("r", ui 1) :-> ("x", id :@ S "r") :-> S "x"
 higher :: Expr
-higher = ("f", ("t", u 1) :-> ("", S "t") :-> S "t") :-> S "f"
+higher = ("f", ("t", ui 1) :-> ("", S "t") :-> S "t") :-> S "f"
 bigger :: Expr
-bigger = ("f", ("t", u 1) :-> ("r", u 4) :-> S "r") :-> S "f"
+bigger = ("f", ("t", ui 1) :-> ("r", ui 4) :-> S "r") :-> S "f"
 level :: Expr
-level = ("i", L) :-> ("T", us "i" 0) :-> ("t", S "T") :-> S "T" ::> S "t"
+level = ("i", L) :-> ("T", us "i") :-> ("t", S "T") :-> S "T" ::> S "t"
+false :: Expr
+false = ("i", L) :-> ("T", us "i") :-> us "i" ::> S "T"
+maxleveli :: Expr
+maxleveli = ("i", L) :-> ("Ti", us "i") :-> ("j", L) :-> ("Tj", us "j") :-> Um (maxLevel (lv "i" 0) (lv "j" 0)) ::> S "Ti"
+maxlevelj :: Expr
+maxlevelj = ("i", L) :-> ("Ti", us "i") :-> ("j", L) :-> ("Tj", us "j") :-> Um (maxLevel (lv "i" 0) (lv "j" 0)) ::> S "Tj"
 
 zero :: Expr
-zero = ("a", u 1) :-> ("b", u 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
+zero = ("a", ui 1) :-> ("b", ui 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
 -- zero  = ("s", B) :. s
 -- one = ("s", B :> B) :. ("z", B) :. s :@ z
 -- two = ("s", B :> B) :. ("z", B) :. s :@ s :@ z
@@ -211,7 +249,7 @@ showLam s lam = let lam' = nf lam in
 typeCheckVar :: Expr -> Expr -> TC Bool
 typeCheckVar ty var = do
     tv <- typeCheck var
-    return $ betaEq ty tv
+    return $ betaEqD ty tv
 
 someFunc :: IO ()
 someFunc = do
@@ -220,10 +258,13 @@ someFunc = do
     showLam "id'" id'
     showLam "higher" higher
     showLam "bigger" bigger
-    showLam "r" $ u 1
-    showLam "r" $ ("r", u 2) :-> S "r"
-    showLam "test"  $ nf $ ("r", u 1) :-> ("l", S "r") :-> id :@ S "r" :@ S "l"
+    showLam "r" $ ui 1
+    showLam "r" $ ("r", ui 2) :-> S "r"
+    showLam "test"  $ nf $ ("r", ui 1) :-> ("l", S "r") :-> id :@ S "r" :@ S "l"
     showLam "level" level
+    showLam "false" false
+    showLam "maxleveli" maxleveli
+    showLam "maxlevelj" maxlevelj
     print $ betaEq (("", S "t") :-> S "t") (("", S "t") :-> S "t")
-    print $ typeCheckVar (("t", u 1) :-> ("", S "t") :-> S "t") (("r", u 1) :-> ("x", S "r") :-> S "x")
+    print $ typeCheckVar (("t", ui 1) :-> ("", S "t") :-> S "t") (("r", ui 1) :-> ("x", S "r") :-> S "x")
 
