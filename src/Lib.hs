@@ -4,19 +4,23 @@ import Data.List ( (\\), intercalate )
 import Control.Monad (unless)
 import Prelude hiding (id)
 import Data.Either (fromRight)
-import Data.Map.Strict (Map, singleton, insert, delete, toList, keys)
+import Data.Map.Strict (Map, singleton, insert, delete, toList, keys, elems)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 
 type Sym = String
 type Levels = Map Sym Int
 data Expr
-    = S Sym -- Symbol
-    | Expr :@ Expr -- Application
-    | Expr ::> Expr -- Left typing: Type ::> term
+    = L -- Type for unvirse level
+    | U Levels -- Universe where the level is the max of each Sym+Int
+    | S Sym -- Symbol
     | (Sym, Expr) :-> Expr -- Dependent lambda
-    | Um Levels -- Universe where the level is the max of each Sym+Int
-    | L -- Type for unvirse level
+    | Expr :@ Expr -- Application
+    -- | (Sym, Expr) :/\ Expr -- Depedent intersection type
+    -- | Expr :^ Expr -- Dependent intersection term
+    -- | I1 Expr -- Term of the dependent intersection with first type
+    -- | I2 Expr -- Term of the dependent intersection with second type
+    | Expr ::> Expr -- Left typing: Type ::> term
     deriving (Eq, Read)
 infixr 2 :->
 infixl 8 :@
@@ -31,7 +35,7 @@ instance Show Expr where
         | t == S "" = s ++ " -> " ++ show e
         | otherwise = "(" ++ s ++ " : " ++ show t ++ ") -> " ++ show e
     show (t ::> e) = show t ++ " :> " ++ show e
-    show (Um l) = "U " ++ showL l
+    show (U l) = "U " ++ showL l
     show L = "L"
 
 showL :: Levels -> String
@@ -52,7 +56,7 @@ freeVars (S s) = [s]
 freeVars (f :@ a) = freeVars f ++ freeVars a
 freeVars (t ::> e) = freeVars e ++ freeVars t
 freeVars ((s, _t) :-> e) = freeVars e \\ [s]
-freeVars (Um ls) = keys ls
+freeVars (U ls) = keys ls
 freeVars L = []
 
 whnf :: Expr -> Expr
@@ -76,9 +80,9 @@ subst s x = sub
                 e'' = substVar s' s'' e'
             in (s'', sub t') :-> sub e''
           | otherwise = (s', sub t') :-> sub e'
-        sub ul@(Um ls) = case x of
+        sub ul@(U ls) = case x of
             S l -> case Map.lookup s ls of
-                Just i -> Um (insert l i $ delete s ls)
+                Just i -> U (insert l i $ delete s ls)
                 Nothing -> ul
             _ -> ul
         sub L = L
@@ -99,8 +103,8 @@ alphaEq _ (S s) (S s') = s == s'
 alphaEq d (f :@ x) (f' :@ x') = alphaEq d f f' && alphaEq d x x'
 alphaEq d (t ::> e) (t' ::> e') = alphaEq d e e' && alphaEq d t t'
 alphaEq d ((s, t) :-> e) ((s', t') :-> e') = alphaEq d e (substVar s' s e') && alphaEq d t t'
-alphaEq Symmetric (Um ls) (Um ls') = ls == ls'
-alphaEq Directional (Um ls) (Um ls') = universeValid ls ls'
+alphaEq Symmetric (U ls) (U ls') = ls == ls'
+alphaEq Directional (U ls) (U ls') = universeValid ls ls'
 alphaEq _ L L = True
 alphaEq _ _ _ = False
 
@@ -136,7 +140,7 @@ erased (S s) = S s
 erased (f :@ x) = erased f :@ erased x
 erased (_t ::> e) = erased e
 erased ((s, _t) :-> e) = (s, S "") :-> erased e
-erased (Um ls) = Um ls
+erased (U ls) = U ls
 erased L = L
 
 erasedBetaEq :: Expr -> Expr -> Bool
@@ -165,7 +169,11 @@ findVar (Env ls) s =
     Nothing -> throwError $ "Connat find variable " ++ s
 
 tCheck :: Env -> Expr -> TC Expr
-tCheck env (S s) = findVar env s
+tCheck env (S s) = do 
+    t <- findVar env s
+    univ <- universe env t
+    unless (validLevels univ) $ throwError $ "The symbol '" ++ s ++ ": " ++ show t ++ "' has a type with a negative universe level which is invalid."
+    return t
 tCheck env (f :@ x) = do
     tf <- tCheck env f
     case tf of
@@ -183,16 +191,22 @@ tCheck env ((s, t) :-> e) = do
     let env' = extend env s t
     te <- tCheck env' e
     return $ (s, t) :-> te
-tCheck _ (Um ls) = return $ Um ((+1) <$> ls)
-tCheck _ L = return $ Um (singleton "" 0)
+tCheck _ (U ls) = return $ U ((+1) <$> ls)
+tCheck _ L = return $ U (singleton "" 0)
 
 universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
-universe _ (Um ls) = return ((+1) <$> ls)
-universe env (S s) = findVar env s >>= universe env
+universe _ (U ls) = return ((+1) <$> ls)
+universe env (S s) = findVar env s >>= (((+(-1)) <$>) <$>) . universe env
 universe env (f :@ _) = universe env f
 universe env (_ ::> e) = universe env e
-universe env ((s, t) :-> e) = universe (extend env s t) e -- FIXME: check that this is correct
+universe env ((s, t) :-> e) = do
+    u1 <- universe env t
+    u2 <- universe (extend env s t) e
+    return $ maxLevel u1 u2
+
+validLevels :: Levels -> Bool
+validLevels ls = all (>=0) (elems ls)
 
 maxLevel :: Levels -> Levels -> Levels
 maxLevel l1 l2 = lmax l1 (toList l2)
@@ -207,11 +221,11 @@ lv :: Sym -> Int -> Levels
 lv = singleton
 
 ui :: Int -> Expr
-ui i = Um (singleton "" i)
+ui i = U (singleton "" i)
 us :: Sym -> Expr
-us l = Um (singleton l 0)
+us l = U (singleton l 0)
 u :: Sym -> Int -> Expr
-u l i = Um (singleton l i)
+u l i = U (singleton l i)
 
 id :: Expr
 id = ("t", ui 1) :-> ("x", S "t") :-> S "t" ::> S "x"
@@ -226,9 +240,11 @@ level = ("i", L) :-> ("T", us "i") :-> ("t", S "T") :-> S "T" ::> S "t"
 false :: Expr
 false = ("i", L) :-> ("T", us "i") :-> us "i" ::> S "T"
 maxleveli :: Expr
-maxleveli = ("i", L) :-> ("Ti", us "i") :-> ("j", L) :-> ("Tj", us "j") :-> Um (maxLevel (lv "i" 0) (lv "j" 0)) ::> S "Ti"
+maxleveli = ("i", L) :-> ("Ti", us "i") :-> ("j", L) :-> ("Tj", us "j") :-> U (maxLevel (lv "i" 0) (lv "j" 0)) ::> S "Ti"
 maxlevelj :: Expr
-maxlevelj = ("i", L) :-> ("Ti", us "i") :-> ("j", L) :-> ("Tj", us "j") :-> Um (maxLevel (lv "i" 0) (lv "j" 0)) ::> S "Tj"
+maxlevelj = ("i", L) :-> ("Ti", us "i") :-> ("j", L) :-> ("Tj", us "j") :-> U (maxLevel (lv "i" 0) (lv "j" 0)) ::> S "Tj"
+invalideLevel :: Expr
+invalideLevel = ("T", ui 0) :-> ("t", S "T") :-> ("w", S "t") :-> S "w"
 
 zero :: Expr
 zero = ("a", ui 1) :-> ("b", ui 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
@@ -242,7 +258,7 @@ showLam :: Sym -> Expr -> IO ()
 showLam s lam = let lam' = nf lam in
      case typeCheck lam' of
          Right t -> do
-             putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "" (-1)) (universe initialEnv t) of ls -> Um ls)
+             putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "" (-1)) (universe initialEnv t) of ls -> U ls)
              putStrLn $ s ++ " = " ++ show (erased lam')
          Left err -> print err
 
@@ -265,6 +281,7 @@ someFunc = do
     showLam "false" false
     showLam "maxleveli" maxleveli
     showLam "maxlevelj" maxlevelj
+    showLam "invalideLevel" invalideLevel
     print $ betaEq (("", S "t") :-> S "t") (("", S "t") :-> S "t")
     print $ typeCheckVar (("t", ui 1) :-> ("", S "t") :-> S "t") (("r", ui 1) :-> ("x", S "r") :-> S "x")
 
