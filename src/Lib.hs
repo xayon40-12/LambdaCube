@@ -190,6 +190,7 @@ tCheck env ((s, t) :-> e) = do
     _ <- tCheck env t
     let env' = extend env s t
     te <- tCheck env' e
+    -- FIXME: when the current lambda should be a type, then 'e' must be a type as well, which is not checked here
     return $ (s, t) :-> te
 tCheck _ (U ls) = return $ U ((+1) <$> ls)
 tCheck _ L = return $ U (singleton "" 0)
@@ -245,6 +246,8 @@ maxlevelj :: Expr
 maxlevelj = ("i", L) :-> ("Ti", us "i") :-> ("j", L) :-> ("Tj", us "j") :-> U (maxLevel (lv "i" 0) (lv "j" 0)) ::> S "Tj"
 invalideLevel :: Expr
 invalideLevel = ("T", ui 0) :-> ("t", S "T") :-> ("w", S "t") :-> S "w"
+invalidType :: Expr
+invalidType = ("T", ui 0) :-> ("T1", ("t", S "T") :-> S "t") :-> S "T1"
 
 zero :: Expr
 zero = ("a", ui 1) :-> ("b", ui 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
@@ -282,6 +285,7 @@ someFunc = do
     showLam "maxleveli" maxleveli
     showLam "maxlevelj" maxlevelj
     showLam "invalideLevel" invalideLevel
+    showLam "invalidType" invalidType
     print $ betaEq (("", S "t") :-> S "t") (("", S "t") :-> S "t")
     print $ typeCheckVar (("t", ui 1) :-> ("", S "t") :-> S "t") (("r", ui 1) :-> ("x", S "r") :-> S "x")
 
