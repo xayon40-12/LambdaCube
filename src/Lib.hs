@@ -7,11 +7,12 @@ import Data.Either (fromRight)
 
 type Sym = String
 data Expr
-    = S Sym
-    | Expr :@ Expr
-    | Expr ::> Expr
-    | (Sym, Expr) :-> Expr
-    | U Int
+    = S Sym -- Symbol
+    | Expr :@ Expr -- Application
+    | Expr ::> Expr -- Left typing: Type ::> term
+    | (Sym, Expr) :-> Expr -- Dependent lambda
+    | U Sym Int -- Universe
+    | L -- Type for unvirse level
     deriving (Eq, Read)
 infixr 2 :->
 infixl 8 :@
@@ -23,16 +24,22 @@ instance Show Expr where
     show (f :@ x) = "(" ++ show f ++ ") " ++ show x
     show ((s, t) :-> e)
         | null s = show t ++ " -> " ++ show e
+        | t == S "" = s ++ " -> " ++ show e
         | otherwise = "(" ++ s ++ " : " ++ show t ++ ") -> " ++ show e
-    show (t ::> e) = show e ++ " : " ++ show t
-    show (U i) = "U" ++ show i
+    show (t ::> e) = show t ++ " :> " ++ show e
+    show (U s i)
+        | null s = "U " ++ show i
+        | i == 0 = "U " ++ s
+        | otherwise = "U " ++ s ++ "+" ++ show i
+    show L = "L"
 
 freeVars :: Expr -> [Sym]
 freeVars (S s) = [s]
 freeVars (f :@ a) = freeVars f ++ freeVars a
 freeVars (t ::> e) = freeVars e ++ freeVars t
 freeVars ((s, _t) :-> e) = freeVars e \\ [s]
-freeVars (U _) = []
+freeVars (U l _) = [l]
+freeVars L = []
 
 whnf :: Expr -> Expr
 whnf expr = spine expr []
@@ -55,7 +62,10 @@ subst s x = sub
                 e'' = substVar s' s'' e'
             in (s'', sub t') :-> sub e''
           | otherwise = (s', sub t') :-> sub e'
-        sub u@(U _) = u
+        sub ul@(U l i) = case x of
+            S l' -> if s == l then U l' i else ul
+            _ -> ul
+        sub L = L
 
         fsx = freeVars x
         newSym e' s' = loop s'
@@ -71,7 +81,8 @@ alphaEq (S s) (S s') = s == s'
 alphaEq (f :@ x) (f' :@ x') = alphaEq f f' && alphaEq x x'
 alphaEq (t ::> e) (t' ::> e') = alphaEq e e' && alphaEq t t'
 alphaEq ((s, t) :-> e) ((s', t') :-> e') = alphaEq e (substVar s' s e') && alphaEq t t'
-alphaEq (U a) (U b) = a == b
+alphaEq (U l i) (U l' i') = l == l' && i == i'
+alphaEq L L = True
 alphaEq _ _ = False
 
 nf :: Expr -> Expr
@@ -87,6 +98,17 @@ nf expr = spine expr []
 
 betaEq :: Expr -> Expr -> Bool
 betaEq e1 e2 = alphaEq (nf e1) (nf e2)
+
+erased :: Expr -> Expr
+erased (S s) = S s
+erased (f :@ x) = erased f :@ erased x
+erased (_t ::> e) = erased e
+erased ((s, _t) :-> e) = (s, S "") :-> erased e
+erased (U l i) = U l i
+erased L = L
+
+erasedBetaEq :: Expr -> Expr -> Bool
+erasedBetaEq e1 e2 = alphaEq (erased . nf $ e1) (erased . nf $ e2)
 
 newtype Env = Env [(Sym, Expr)] deriving (Show)
 
@@ -126,10 +148,12 @@ tCheck env ((s, t) :-> e) = do
     let env' = extend env s t
     te <- tCheck env' e
     return $ (s, t) :-> te
-tCheck _ (U a) = return $ U (a+1)
+tCheck _ (U l i) = return $ U l (i+1)
+tCheck _ L = return $ U "" 0
 
-universe :: Env -> Expr -> TC Int
-universe _ (U i) = return (i+1)
+universe :: Env -> Expr -> TC (Sym, Int)
+universe _ L = return ("", 0)
+universe _ (U l i) = return (l, i+1)
 universe env (S s) = findVar env s >>= universe env
 universe env (f :@ _) = universe env f
 universe env (_ ::> e) = universe env e
@@ -138,19 +162,22 @@ universe env ((s, t) :-> e) = universe (extend env s t) e
 typeCheck :: Expr -> TC Expr
 typeCheck = tCheck initialEnv
 
-
+u :: Int -> Expr
+u = U ""
 
 id :: Expr
-id = ("t", U 1) :-> ("x", S "t") :-> S "t" ::> S "x"
+id = ("t", u 1) :-> ("x", S "t") :-> S "t" ::> S "x"
 id' :: Expr
-id' = ("r", U 1) :-> ("x", id :@ S "r") :-> S "x"
+id' = ("r", u 1) :-> ("x", id :@ S "r") :-> S "x"
 higher :: Expr
-higher = ("f", ("t", U 1) :-> ("", S "t") :-> S "t") :-> S "f"
+higher = ("f", ("t", u 1) :-> ("", S "t") :-> S "t") :-> S "f"
 bigger :: Expr
-bigger = ("f", ("t", U 1) :-> ("r", U 4) :-> S "r") :-> S "f"
+bigger = ("f", ("t", u 1) :-> ("r", u 4) :-> S "r") :-> S "f"
+level :: Expr
+level = ("i", L) :-> ("T", U "i" 0) :-> ("t", S "T") :-> S "T" ::> S "t"
 
 zero :: Expr
-zero = ("a", U 1) :-> ("b", U 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
+zero = ("a", u 1) :-> ("b", u 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
 -- zero  = ("s", B) :. s
 -- one = ("s", B :> B) :. ("z", B) :. s :@ z
 -- two = ("s", B :> B) :. ("z", B) :. s :@ s :@ z
@@ -158,12 +185,12 @@ zero = ("a", U 1) :-> ("b", U 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
 -- plus = ("m", B :> B :> B) :. ("n", B :> B :> B) :. ("s", B :> B) :. ("z", B) :. m :@ s :@ (n :@ s :@ z)
 
 showLam :: Sym -> Expr -> IO ()
-showLam s l' = let l = nf l' in
-    case typeCheck l of
-        Right t -> do
-            putStrLn $ s ++ " :: " ++ show t ++ " | U" ++ show (fromRight (-1) (universe initialEnv t))
-            putStrLn $ s ++ " " ++ show l
-        Left err -> print err
+showLam s lam = let lam' = nf lam in
+     case typeCheck lam' of
+         Right t -> do
+             putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight ("", -1) (universe initialEnv t) of (l, i) -> U l i)
+             putStrLn $ s ++ " = " ++ show (erased lam')
+         Left err -> print err
 
 typeCheckVar :: Expr -> Expr -> TC Bool
 typeCheckVar ty var = do
@@ -177,9 +204,10 @@ someFunc = do
     showLam "id'" id'
     showLam "higher" higher
     showLam "bigger" bigger
-    showLam "r" $ U 1
-    showLam "r" $ ("r", U 2) :-> S "r"
-    showLam "test"  $ nf $ ("r", U 1) :-> ("l", S "r") :-> id :@ S "r" :@ S "l"
+    showLam "r" $ u 1
+    showLam "r" $ ("r", u 2) :-> S "r"
+    showLam "test"  $ nf $ ("r", u 1) :-> ("l", S "r") :-> id :@ S "r" :@ S "l"
+    showLam "level" level
     print $ betaEq (("", S "t") :-> S "t") (("", S "t") :-> S "t")
-    print $ typeCheckVar (("t", U 1) :-> ("", S "t") :-> S "t") (("r", U 1) :-> ("x", S "r") :-> S "x")
+    print $ typeCheckVar (("t", u 1) :-> ("", S "t") :-> S "t") (("r", u 1) :-> ("x", S "r") :-> S "x")
 
