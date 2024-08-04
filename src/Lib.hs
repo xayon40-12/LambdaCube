@@ -12,6 +12,7 @@ type Sym = String
 type Levels = Map Sym Int
 data Expr
     = L -- Type for unvirse level
+    | Sym :+ Int -- Constructor of a level
     | U Levels -- Universe where the level is the max of each Sym+Int
     | S Sym -- Symbol
     | (Sym, Expr) :-> Expr -- Dependent lambda
@@ -23,8 +24,9 @@ data Expr
     | Expr ::> Expr -- Left typing: Type ::> term
     deriving (Eq, Read)
 infixr 2 :->
-infixl 8 :@
+infixl 7 :@
 infix 6 ::>
+infix 8 :+
 
 instance Show Expr where
     show (S s) = s
@@ -36,6 +38,7 @@ instance Show Expr where
         | otherwise = "(" ++ s ++ " : " ++ show t ++ ") -> " ++ show e
     show (t ::> e) = show t ++ " :> " ++ show e
     show (U l) = "U " ++ showL l
+    show (s :+ i) = s ++ "+" ++ show i
     show L = "L"
 
 showL :: Levels -> String
@@ -57,6 +60,7 @@ freeVars (f :@ a) = freeVars f ++ freeVars a
 freeVars (t ::> e) = freeVars e ++ freeVars t
 freeVars ((s, _t) :-> e) = freeVars e \\ [s]
 freeVars (U ls) = keys ls
+freeVars (s :+ _) = [s]
 freeVars L = []
 
 whnf :: Expr -> Expr
@@ -84,7 +88,14 @@ subst s x = sub
             S l -> case Map.lookup s ls of
                 Just i -> U (insert l i $ delete s ls)
                 Nothing -> ul
+            s' :+ i' -> case Map.lookup s ls of
+                Just i -> U (insert s' (i+i') $ delete s ls)
+                Nothing -> ul
             _ -> ul
+        sub l@(s' :+ i) = case x of
+            S l' -> if s' == s then l' :+ i else l
+            s'' :+ i' -> if s' == s then s'' :+ (i+i') else l
+            _ -> l
         sub L = L
 
         fsx = freeVars x
@@ -106,6 +117,8 @@ alphaEq d ((s, t) :-> e) ((s', t') :-> e') = alphaEq d e (substVar s' s e') && a
 alphaEq Symmetric (U ls) (U ls') = ls == ls'
 alphaEq Directional (U ls) (U ls') = universeValid ls ls'
 alphaEq _ L L = True
+alphaEq Symmetric (s :+ i) (s' :+ i') = s == s' && i == i'
+alphaEq Directional (s :+ i) (s' :+ i') = s == s' && i >= i'
 alphaEq _ _ _ = False
 
 -- first value correspond to the expected level, so the largest one in the case of cumulative universes
@@ -141,6 +154,7 @@ erased (f :@ x) = erased f :@ erased x
 erased (_t ::> e) = erased e
 erased ((s, _t) :-> e) = (s, S "") :-> erased e
 erased (U ls) = U ls
+erased (s :+ i) = s :+ i
 erased L = L
 
 erasedBetaEq :: Expr -> Expr -> Bool
@@ -193,6 +207,7 @@ tCheck env ((s, t) :-> e) = do
             return $ U (maxLevel ls' ls)
         _ -> return $ (s, t) :-> te
 tCheck _ (U ls) = return $ U ((+1) <$> ls)
+tCheck env (s :+ _i) = findVar env s
 tCheck _ L = return $ U (singleton "" 0)
 
 isUniverse :: Expr -> Bool
@@ -201,6 +216,7 @@ isUniverse _ = False
 
 universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
+universe _ (s :+ i) = throwError $ "The term '" ++ s ++ "+" ++ show i ++ ")' does not have a universe."
 universe _ (U ls) = return ((+1) <$> ls)
 universe env (S s) = findVar env s >>= (((+(-1)) <$>) <$>) . universe env
 universe env (f :@ _) = universe env f
@@ -272,10 +288,10 @@ someFunc :: IO ()
 someFunc = do
     showLam "zero" zero
     showLam "id" id
+    showLam "i:+1" $ ("i", L) :-> id :@ "i" :+ 1
     showLam "higher" higher
     showLam "bigger" bigger
     showLam "r" $ ui 1
-    showLam "r" $ ("r", ui 2) :-> S "r"
     showLam "test"  $ nf $ ("i", L) :-> ("r", us "i") :-> ("l", S "r") :-> id :@ S "i" :@ S "r" :@ S "l"
     showLam "level" level
     showLam "false" false
