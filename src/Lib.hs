@@ -4,7 +4,7 @@ import Data.List ( (\\), intercalate )
 import Control.Monad (unless)
 import Prelude hiding (id)
 import Data.Either (fromRight)
-import Data.Map.Strict (Map, singleton, insert, delete, toList, keys, elems)
+import Data.Map.Strict (Map, singleton, insert, delete, toList, keys)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 
@@ -169,11 +169,7 @@ findVar (Env ls) s =
     Nothing -> throwError $ "Connat find variable " ++ s
 
 tCheck :: Env -> Expr -> TC Expr
-tCheck env (S s) = do 
-    t <- findVar env s
-    univ <- universe env t
-    unless (validLevels univ) $ throwError $ "The symbol '" ++ s ++ ": " ++ show t ++ "' has a type with a negative universe level which is invalid."
-    return t
+tCheck env (S s) = findVar env s
 tCheck env (f :@ x) = do
     tf <- tCheck env f
     case tf of
@@ -187,13 +183,21 @@ tCheck env (t ::> e) = do
     unless (betaEqD t te) $ throwError $ "Type missmatch (" ++ show t ++ "," ++ show te ++ ") in " ++ show (t ::> e) ++ "."
     return t
 tCheck env ((s, t) :-> e) = do
-    _ <- tCheck env t
+    tt <- tCheck env t
+    unless (isUniverse tt) $ throwError $ "The type of a type must be a universe, which is not the case for '" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "'."
     let env' = extend env s t
     te <- tCheck env' e
-    -- FIXME: when the current lambda should be a type, then 'e' must be a type as well, which is not checked here
-    return $ (s, t) :-> te
+    case te of
+        U ls -> do
+            ls' <- universe env t
+            return $ U (maxLevel ls' ls)
+        _ -> return $ (s, t) :-> te
 tCheck _ (U ls) = return $ U ((+1) <$> ls)
 tCheck _ L = return $ U (singleton "" 0)
+
+isUniverse :: Expr -> Bool
+isUniverse (U _) = True
+isUniverse _ = False
 
 universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
@@ -205,9 +209,6 @@ universe env ((s, t) :-> e) = do
     u1 <- universe env t
     u2 <- universe (extend env s t) e
     return $ maxLevel u1 u2
-
-validLevels :: Levels -> Bool
-validLevels ls = all (>=0) (elems ls)
 
 maxLevel :: Levels -> Levels -> Levels
 maxLevel l1 l2 = lmax l1 (toList l2)
@@ -229,9 +230,7 @@ u :: Sym -> Int -> Expr
 u l i = U (singleton l i)
 
 id :: Expr
-id = ("t", ui 1) :-> ("x", S "t") :-> S "t" ::> S "x"
-id' :: Expr
-id' = ("r", ui 1) :-> ("x", id :@ S "r") :-> S "x"
+id = ("i", L) :-> ("t", us "i") :-> ("x", S "t") :-> S "t" ::> S "x"
 higher :: Expr
 higher = ("f", ("t", ui 1) :-> ("", S "t") :-> S "t") :-> S "f"
 bigger :: Expr
@@ -258,12 +257,11 @@ zero = ("a", ui 1) :-> ("b", ui 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
 -- plus = ("m", B :> B :> B) :. ("n", B :> B :> B) :. ("s", B :> B) :. ("z", B) :. m :@ s :@ (n :@ s :@ z)
 
 showLam :: Sym -> Expr -> IO ()
-showLam s lam = let lam' = nf lam in
-     case typeCheck lam' of
-         Right t -> do
-             putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "" (-1)) (universe initialEnv t) of ls -> U ls)
-             putStrLn $ s ++ " = " ++ show (erased lam')
-         Left err -> print err
+showLam s lam = case typeCheck lam of
+     Right t -> do
+         putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "" (-1)) (universe initialEnv t) of ls -> U ls)
+         putStrLn $ s ++ " = " ++ show (erased lam)
+     Left err -> putStrLn $ s ++ ": " ++ show err
 
 typeCheckVar :: Expr -> Expr -> TC Bool
 typeCheckVar ty var = do
@@ -274,12 +272,11 @@ someFunc :: IO ()
 someFunc = do
     showLam "zero" zero
     showLam "id" id
-    showLam "id'" id'
     showLam "higher" higher
     showLam "bigger" bigger
     showLam "r" $ ui 1
     showLam "r" $ ("r", ui 2) :-> S "r"
-    showLam "test"  $ nf $ ("r", ui 1) :-> ("l", S "r") :-> id :@ S "r" :@ S "l"
+    showLam "test"  $ nf $ ("i", L) :-> ("r", us "i") :-> ("l", S "r") :-> id :@ S "i" :@ S "r" :@ S "l"
     showLam "level" level
     showLam "false" false
     showLam "maxleveli" maxleveli
