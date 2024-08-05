@@ -31,7 +31,7 @@ infix 8 :+
 
 instance Show Expr where
     show (S s) = s
-    show (E s v e) = s ++ " = " ++ show e ++ "; " ++ show e
+    show (E s v e) = s ++ " = " ++ show v ++ "; " ++ show e
     -- show ((S s) :@ x) = s ++ " " ++ show x
     -- show (f :@ x) = "(" ++ show f ++ ") " ++ show x
     show (f :@ x) = show f ++ " " ++ show x
