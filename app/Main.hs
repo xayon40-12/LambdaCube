@@ -1,6 +1,9 @@
 module Main (main) where
 
 import Lib
+import Parser (parseExamples)
 
 main :: IO ()
-main = someFunc
+main = do
+  someFunc
+  parseExamples

@@ -14,7 +14,6 @@ data Expr
     = L -- Type for unvirse level
     | Sym :+ Int -- Constructor of a level
     | U Levels -- Universe where the level is the max of each Sym+Int
-    | S Sym -- Symbol
     | (Sym, Expr) :-> Expr -- Dependent lambda
     | Expr :@ Expr -- Application
     -- | (Sym, Expr) :/\ Expr -- Depedent intersection type
@@ -22,6 +21,7 @@ data Expr
     -- | I1 Expr -- Term of the dependent intersection with first type
     -- | I2 Expr -- Term of the dependent intersection with second type
     | Expr ::> Expr -- Left typing: Type ::> term
+    | S Sym -- Symbol
     deriving (Eq, Read)
 infixr 2 :->
 infixl 7 :@
@@ -30,8 +30,9 @@ infix 8 :+
 
 instance Show Expr where
     show (S s) = s
-    show ((S s) :@ x) = s ++ " " ++ show x
-    show (f :@ x) = "(" ++ show f ++ ") " ++ show x
+    -- show ((S s) :@ x) = s ++ " " ++ show x
+    -- show (f :@ x) = "(" ++ show f ++ ") " ++ show x
+    show (f :@ x) = show f ++ " " ++ show x
     show ((s, t) :-> e)
         | null s = show t ++ " -> " ++ show e
         | t == S "" = s ++ " -> " ++ show e
@@ -135,7 +136,7 @@ nf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
         spine (t ::> e) [] = nf t ::> nf e
-        spine (_ ::> e) xs = spine e xs
+        -- spine (_ ::> e) xs = spine e xs
         spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
         spine f xs = app f xs
