@@ -21,6 +21,7 @@ data Expr
     -- | I1 Expr -- Term of the dependent intersection with first type
     -- | I2 Expr -- Term of the dependent intersection with second type
     | Expr ::> Expr -- Left typing: Type ::> term
+    | E Sym Expr Expr
     | S Sym -- Symbol
     deriving (Eq, Read)
 infixr 2 :->
@@ -30,6 +31,7 @@ infix 8 :+
 
 instance Show Expr where
     show (S s) = s
+    show (E s v e) = s ++ " = " ++ show e ++ "; " ++ show e
     -- show ((S s) :@ x) = s ++ " " ++ show x
     -- show (f :@ x) = "(" ++ show f ++ ") " ++ show x
     show (f :@ x) = show f ++ " " ++ show x
@@ -62,6 +64,7 @@ freeVars (t ::> e) = freeVars e ++ freeVars t
 freeVars ((s, _t) :-> e) = freeVars e \\ [s]
 freeVars (U ls) = keys ls
 freeVars (s :+ _) = [s]
+freeVars (E s v e) = s:freeVars v ++ freeVars e
 freeVars L = []
 
 whnf :: Expr -> Expr
@@ -85,6 +88,13 @@ subst s x = sub
                 e'' = substVar s' s'' e'
             in (s'', sub t') :-> sub e''
           | otherwise = (s', sub t') :-> sub e'
+        sub (E s' v e')
+          | s == s' = E s' (sub v) e'
+          | s' `elem` fsx =
+            let s'' = newSym e' s'
+                e'' = substVar s' s'' e'
+            in E s'' (sub v) (sub e'')
+          | otherwise = E s' (sub v) (sub e')
         sub ul@(U ls) = case x of
             S l -> case Map.lookup s ls of
                 Just i -> U (insert l i $ delete s ls)
@@ -120,6 +130,8 @@ alphaEq Directional (U ls) (U ls') = universeValid ls ls'
 alphaEq _ L L = True
 alphaEq Symmetric (s :+ i) (s' :+ i') = s == s' && i == i'
 alphaEq Directional (s :+ i) (s' :+ i') = s == s' && i >= i'
+alphaEq d (E s v e) e' = alphaEq d (subst s v e) e'
+alphaEq d e (E s v e') = alphaEq d e (subst s v e')
 alphaEq _ _ _ = False
 
 -- first value correspond to the expected level, so the largest one in the case of cumulative universes
@@ -139,6 +151,7 @@ nf expr = spine expr []
         -- spine (_ ::> e) xs = spine e xs
         spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
+        spine (E s v e) xs = spine (subst s v e) xs
         spine f xs = app f xs
         app f xs = foldl (:@) f (map nf xs)
 
@@ -154,6 +167,7 @@ erased (S s) = S s
 erased (f :@ x) = erased f :@ erased x
 erased (_t ::> e) = erased e
 erased ((s, _t) :-> e) = (s, S "") :-> erased e
+erased (E s v e) = erased $ subst s v e
 erased (U ls) = U ls
 erased (s :+ i) = s :+ i
 erased L = L
@@ -207,6 +221,7 @@ tCheck env ((s, t) :-> e) = do
             ls' <- universe env t
             return $ U (maxLevel ls' ls)
         _ -> return $ (s, t) :-> te
+tCheck env (E s v e) = tCheck env (subst s v e)
 tCheck _ (U ls) = return $ U ((+1) <$> ls)
 tCheck env (s :+ _i) = findVar env s
 tCheck _ L = return $ U (singleton "" 0)
@@ -226,6 +241,7 @@ universe env ((s, t) :-> e) = do
     u1 <- universe env t
     u2 <- universe (extend env s t) e
     return $ maxLevel u1 u2
+universe env (E s v e) = universe env (subst s v e)
 
 maxLevel :: Levels -> Levels -> Levels
 maxLevel l1 l2 = lmax l1 (toList l2)
