@@ -43,21 +43,26 @@ levels = fromList <$> sepBy (try lv <|> (,0) <$> sym) (char ',')
 universe :: Parser Expr
 universe = U <$> (char 'U' *> space *> levels)
 
+erasure :: Parser Bool
+erasure = char '\'' $> True <|> return False
+
 lambda :: Parser Expr
 lambda = do
-  s <- char '(' *> sym
-  t <- char ':' *> space *> expr
-  e <- char ')' *> space *> string "->" *> space *> expr
-  return $ (s, t) :-> e
+  er <- char '(' *> erasure
+  s <- sym <* char ':' <* space
+  t <- expr <* char ')' 
+  e <- space *> string "->" *> space *> expr
+  return $ Lam er s t e
 
 application :: Parser Expr
 application = do
   f <- exprR <* space
-  leftAssociate f <$> expr
+  er <- erasure
+  leftAssociate er f <$> expr
 
-leftAssociate :: Expr -> Expr -> Expr
-leftAssociate f (x :@ xs) = leftAssociate (f :@ x) xs
-leftAssociate f x = f :@ x
+leftAssociate :: Bool -> Expr -> Expr -> Expr
+leftAssociate er f (App er' x xs) = leftAssociate er' (App er f x) xs
+leftAssociate er f x = App er f x
 
 typing :: Parser Expr
 typing = do
@@ -90,8 +95,8 @@ parseShow s e = case parse e of
 
 parseExamples :: IO ()
 parseExamples = do
-  parseShow " l" "(i: L) -> i+0"
-  parseShow "id" "(i: L) -> Z = U i; (T: Z) -> (tt: (t1: T) -> (t2: T) -> T) -> (t: T) -> r = T; r :> ttt = tt t; ttt t"
+  parseShow " l" "('i: L) -> i+0"
+  parseShow "id" "('i: L) -> Z = U i; ('T: Z) -> (tt: (t1: T) -> (t2: T) -> T) -> (t: T) -> r = T; r :> ttt = tt t; ttt t"
   parseShow " U" "U +1"
   --             |         |         |         |         |         |         |         |         |         |
   --             0         10        20        30        40        50        60        70        80        90
