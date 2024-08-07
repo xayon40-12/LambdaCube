@@ -219,13 +219,12 @@ tCheck env (t ::> e) = do
     te <- tCheck env e
     unless (betaEqD t te) $ throwError $ "Type missmatch (" ++ show t ++ "," ++ show te ++ ") in " ++ show (t ::> e) ++ "."
     return t
-tCheck env l@((s, t) :-> e) = do
+tCheck env ((s, t) :-> e) = do
     tt <- tCheck env t
     unless (isUniverse tt) $ throwError $ "The type of a type must be a universe, which is not the case for \"" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "\"."
     let env' = extend env s t
     te <- tCheck env' e
     case te of
-        Erased _ -> throwError $ "The expression of a lambda cannot be Erased, in: \"" ++ show l ++ "\", where \"" ++ show (te ::> e) ++ "\"."
         U ls -> do
             ls' <- universe env t
             return $ U (maxLevel ls' ls)
@@ -323,8 +322,8 @@ someFunc = do
     showLam "maxlevelj" maxlevelj
     showLam "invalideLevel" invalideLevel
     showLam "invalidType" invalidType
-    showLam "validErased" $ ("i", Erased L) :-> ("T", us "i") :-> ("t", S "T" ) :-> S "t"
-    showLam "invalidErased" $ ("i", Erased L) :-> ("T", us "i") :-> ("t", S "T" ) :->  S "i"
+    showLam "validErased" $ ("i", Erased L) :-> ("T", us "i") :-> ("t", S "T" ) :-> S "T" ::> S "t"
+    showLam "invalidErased" $ ("i", Erased L) :-> ("T", us "i") :-> ("t", S "T" ) :->  L ::> S "i"
     print $ betaEq (("", S "t") :-> S "t") (("", S "t") :-> S "t")
     print $ typeCheckVar (("t", ui 1) :-> ("", S "t") :-> S "t") (("r", ui 1) :-> ("x", S "r") :-> S "x")
 

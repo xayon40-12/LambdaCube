@@ -68,17 +68,20 @@ typing = do
 symbol :: Parser Expr
 symbol = S <$> sym
 
+erased :: Parser Expr
+erased = char '\'' *> (Erased <$> expr)
+
 parens :: Parser Expr
 parens = char '(' *> expr <* char ')'
 
 expr :: Parser Expr
-expr = try named <|> try parens <|> levelT <|> universe <|> lambda <|> try typing <|> try application <|> try level <|> symbol
+expr = erased <|> try named <|> try parens <|> levelT <|> universe <|> lambda <|> try typing <|> try application <|> try level <|> symbol
 
 exprT :: Parser Expr
-exprT = try named <|> try parens <|> levelT <|> universe <|> lambda <|> try application <|> try level <|> symbol
+exprT = erased <|> try named <|> try parens <|> levelT <|> universe <|> lambda <|> try application <|> try level <|> symbol
 
 exprR :: Parser Expr
-exprR = try named <|> try parens <|> levelT <|> universe <|> lambda <|> try level <|> symbol
+exprR = erased <|> try named <|> try parens <|> levelT <|> universe <|> lambda <|> try level <|> symbol
 
 parse :: String -> Either ParseError Expr
 parse = P.parse (expr <* eof) ""
@@ -91,7 +94,7 @@ parseShow s e = case parse e of
 parseExamples :: IO ()
 parseExamples = do
   parseShow " l" "(i: L) -> i+0"
-  parseShow "id" "(i: L) -> Z = U i; (T: Z) -> (tt: (t1: T) -> (t2: T) -> T) -> (t: T) -> r = T; r :> ttt = tt t; ttt t"
+  parseShow "id" "(i: 'L) -> Z = U i; (T: 'Z) -> (tt: (t1: T) -> (t2: T) -> T) -> (t: T) -> r = T; r :> ttt = tt t; ttt t"
   parseShow " U" "U +1"
   --             |         |         |         |         |         |         |         |         |         |
   --             0         10        20        30        40        50        60        70        80        90
