@@ -10,17 +10,19 @@ import Data.Maybe (fromMaybe)
 
 type Sym = String
 type Levels = Map Sym Int
+type Type = Expr
 data Expr
     = L -- Type for unvirse level
     | Sym :+ Int -- Constructor of a level
     | U Levels -- Universe where the level is the max of each Sym+Int
-    | (Sym, Expr) :-> Expr -- Dependent lambda
+    | (Sym, Type) :-> Expr -- Dependent lambda
     | Expr :@ Expr -- Application
     -- | (Sym, Expr) :/\ Expr -- Depedent intersection type
     -- | Expr :^ Expr -- Dependent intersection term
     -- | I1 Expr -- Term of the dependent intersection with first type
     -- | I2 Expr -- Term of the dependent intersection with second type
-    | Expr ::> Expr -- Left typing: Type ::> term
+    | Type ::> Expr -- Left typing: Type ::> term
+    | Erased Expr
     | E Sym Expr Expr
     | S Sym -- Symbol
     deriving (Eq, Read)
@@ -32,8 +34,7 @@ infix 8 :+
 instance Show Expr where
     show (S s) = s
     show (E s v e) = s ++ " = " ++ show v ++ "; " ++ show e
-    -- show ((S s) :@ x) = s ++ " " ++ show x
-    -- show (f :@ x) = "(" ++ show f ++ ") " ++ show x
+    show (Erased e) = "'" ++ show e
     show (f :@ x) = show f ++ " " ++ show x
     show ((s, t) :-> e)
         | null s = show t ++ " -> " ++ show e
@@ -59,21 +60,34 @@ showU l i
 
 freeVars :: Expr -> [Sym]
 freeVars (S s) = [s]
+freeVars (Erased e) = freeVars e
 freeVars (f :@ a) = freeVars f ++ freeVars a
-freeVars (t ::> e) = freeVars e ++ freeVars t
-freeVars ((s, _t) :-> e) = freeVars e \\ [s]
+freeVars (t ::> e) = freeVars t ++ freeVars e
+freeVars ((s, t) :-> e) = freeVars t ++ (freeVars e \\ [s])
 freeVars (U ls) = keys ls
 freeVars (s :+ _) = [s]
-freeVars (E s v e) = s:freeVars v ++ freeVars e
+freeVars (E s v e) = freeVars v ++ (freeVars e \\ [s])
 freeVars L = []
 
-whnf :: Expr -> Expr
-whnf expr = spine expr []
+-- whnf :: Expr -> Expr
+-- whnf expr = spine expr []
+--     where
+--         spine (f :@ x) xs = spine f (x:xs)
+--         spine (_ ::> e) xs = spine e xs
+--         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
+--         spine f xs = foldl (:@) f xs
+
+nf :: Expr -> Expr
+nf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        spine (_ ::> e) xs = spine e xs
+        spine (t ::> e) [] = nf t ::> nf e
+        spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
-        spine f xs = foldl (:@) f xs
+        spine (E s v e) xs = spine (subst s v e) xs
+        spine (Erased e) [] = Erased (nf e)
+        spine f xs = app f xs
+        app f xs = foldl (:@) f (map nf xs)
 
 subst :: Sym -> Expr -> Expr -> Expr
 subst s x = sub
@@ -107,6 +121,7 @@ subst s x = sub
             S l' -> if s' == s then l' :+ i else l
             s'' :+ i' -> if s' == s then s'' :+ (i+i') else l
             _ -> l
+        sub (Erased e) = Erased (sub e)
         sub L = L
 
         fsx = freeVars x
@@ -132,6 +147,7 @@ alphaEq Symmetric (s :+ i) (s' :+ i') = s == s' && i == i'
 alphaEq Directional (s :+ i) (s' :+ i') = s == s' && i >= i'
 alphaEq d (E s v e) e' = alphaEq d (subst s v e) e'
 alphaEq d e (E s v e') = alphaEq d e (subst s v e')
+alphaEq d (Erased e) (Erased e') = alphaEq d e e'
 alphaEq _ _ _ = False
 
 -- first value correspond to the expected level, so the largest one in the case of cumulative universes
@@ -143,18 +159,6 @@ universeValid l1 l2 = fromMaybe False (req (toList l2))
         req (l:ls) = iner l >>= \b -> (b||) <$> req ls
         iner (l, i) = (i<=) <$> Map.lookup l l1
 
-nf :: Expr -> Expr
-nf expr = spine expr []
-    where
-        spine (f :@ x) xs = spine f (x:xs)
-        spine (t ::> e) [] = nf t ::> nf e
-        -- spine (_ ::> e) xs = spine e xs
-        spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
-        spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
-        spine (E s v e) xs = spine (subst s v e) xs
-        spine f xs = app f xs
-        app f xs = foldl (:@) f (map nf xs)
-
 betaEq :: Expr -> Expr -> Bool
 betaEq e1 e2 = alphaEq Symmetric (nf e1) (nf e2)
 
@@ -164,12 +168,15 @@ betaEqD e1 e2 = alphaEq Directional (nf e1) (nf e2)
 
 erased :: Expr -> Expr
 erased (S s) = S s
+erased (f :@ (Erased _)) = erased f
 erased (f :@ x) = erased f :@ erased x
 erased (_t ::> e) = erased e
+erased ((_, Erased _) :-> e) = erased e
 erased ((s, _t) :-> e) = (s, S "") :-> erased e
 erased (E s v e) = erased $ subst s v e
 erased (U ls) = U ls
 erased (s :+ i) = s :+ i
+erased (Erased e) = Erased e
 erased L = L
 
 erasedBetaEq :: Expr -> Expr -> Bool
@@ -199,6 +206,7 @@ findVar (Env ls) s =
 
 tCheck :: Env -> Expr -> TC Expr
 tCheck env (S s) = findVar env s
+tCheck env (Erased e) = Erased <$> tCheck env e
 tCheck env (f :@ x) = do
     tf <- tCheck env f
     case tf of
@@ -211,12 +219,13 @@ tCheck env (t ::> e) = do
     te <- tCheck env e
     unless (betaEqD t te) $ throwError $ "Type missmatch (" ++ show t ++ "," ++ show te ++ ") in " ++ show (t ::> e) ++ "."
     return t
-tCheck env ((s, t) :-> e) = do
+tCheck env l@((s, t) :-> e) = do
     tt <- tCheck env t
-    unless (isUniverse tt) $ throwError $ "The type of a type must be a universe, which is not the case for '" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "'."
+    unless (isUniverse tt) $ throwError $ "The type of a type must be a universe, which is not the case for \"" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "\"."
     let env' = extend env s t
     te <- tCheck env' e
     case te of
+        Erased _ -> throwError $ "The expression of a lambda cannot be Erased, in: \"" ++ show l ++ "\", where \"" ++ show (te ::> e) ++ "\"."
         U ls -> do
             ls' <- universe env t
             return $ U (maxLevel ls' ls)
@@ -227,12 +236,13 @@ tCheck env (s :+ _i) = findVar env s
 tCheck _ L = return $ U (singleton "" 0)
 
 isUniverse :: Expr -> Bool
+isUniverse (Erased (U _)) = True
 isUniverse (U _) = True
 isUniverse _ = False
 
 universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
-universe _ (s :+ i) = throwError $ "The term '" ++ s ++ "+" ++ show i ++ ")' does not have a universe."
+universe _ (s :+ i) = throwError $ "The term \"" ++ s ++ "+" ++ show i ++ ")\" does not have a universe."
 universe _ (U ls) = return ((+1) <$> ls)
 universe env (S s) = findVar env s >>= (((+(-1)) <$>) <$>) . universe env
 universe env (f :@ _) = universe env f
@@ -242,6 +252,8 @@ universe env ((s, t) :-> e) = do
     u2 <- universe (extend env s t) e
     return $ maxLevel u1 u2
 universe env (E s v e) = universe env (subst s v e)
+universe env (Erased e) = universe env e
+-- universe _ (Erased e) = throwError $ "An erased value \"'e\" does not have a universe, for \"'e = " ++ show e ++ "\""
 
 maxLevel :: Levels -> Levels -> Levels
 maxLevel l1 l2 = lmax l1 (toList l2)
@@ -251,6 +263,18 @@ maxLevel l1 l2 = lmax l1 (toList l2)
 
 typeCheck :: Expr -> TC Expr
 typeCheck = tCheck initialEnv
+
+showLam :: Sym -> Expr -> IO ()
+showLam s lam = case typeCheck lam of
+     Right t -> do
+         putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "ERROR" (-1)) (universe initialEnv t) of ls -> U ls)
+         putStrLn $ s ++ " = " ++ show (erased lam)
+     Left err -> putStrLn $ s ++ ": " ++ show err
+
+typeCheckVar :: Expr -> Expr -> TC Bool
+typeCheckVar ty var = do
+    tv <- typeCheck var
+    return $ betaEqD ty tv
 
 lv :: Sym -> Int -> Levels
 lv = singleton
@@ -283,23 +307,6 @@ invalidType = ("T", ui 0) :-> ("T1", ("t", S "T") :-> S "t") :-> S "T1"
 
 zero :: Expr
 zero = ("a", ui 1) :-> ("b", ui 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
--- zero  = ("s", B) :. s
--- one = ("s", B :> B) :. ("z", B) :. s :@ z
--- two = ("s", B :> B) :. ("z", B) :. s :@ s :@ z
--- three = ("s", B :> B) :. ("z", B) :. s :@ s :@ s :@ z
--- plus = ("m", B :> B :> B) :. ("n", B :> B :> B) :. ("s", B :> B) :. ("z", B) :. m :@ s :@ (n :@ s :@ z)
-
-showLam :: Sym -> Expr -> IO ()
-showLam s lam = case typeCheck lam of
-     Right t -> do
-         putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "" (-1)) (universe initialEnv t) of ls -> U ls)
-         putStrLn $ s ++ " = " ++ show (erased lam)
-     Left err -> putStrLn $ s ++ ": " ++ show err
-
-typeCheckVar :: Expr -> Expr -> TC Bool
-typeCheckVar ty var = do
-    tv <- typeCheck var
-    return $ betaEqD ty tv
 
 someFunc :: IO ()
 someFunc = do
@@ -316,6 +323,8 @@ someFunc = do
     showLam "maxlevelj" maxlevelj
     showLam "invalideLevel" invalideLevel
     showLam "invalidType" invalidType
+    showLam "validErased" $ ("i", Erased L) :-> ("T", us "i") :-> ("t", S "T" ) :-> S "t"
+    showLam "invalidErased" $ ("i", Erased L) :-> ("T", us "i") :-> ("t", S "T" ) :->  S "i"
     print $ betaEq (("", S "t") :-> S "t") (("", S "t") :-> S "t")
     print $ typeCheckVar (("t", ui 1) :-> ("", S "t") :-> S "t") (("r", ui 1) :-> ("x", S "r") :-> S "x")
 
