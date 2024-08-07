@@ -93,6 +93,7 @@ parseShow s e = case parse e of
 
 parseExamples :: IO ()
 parseExamples = do
+  parseShow "zero" "(i: L) -> (P: U i) -> (s: (p: P) -> P) -> (z: P) -> z" 
   parseShow " l" "(i: L) -> i+0"
   parseShow "id" "(i: 'L) -> Z = U i; (T: 'Z) -> (tt: (t1: T) -> (t2: T) -> T) -> (t: T) -> r = T; r :> ttt = tt t; ttt t"
   parseShow " U" "U +1"

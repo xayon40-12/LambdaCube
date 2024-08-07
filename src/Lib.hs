@@ -221,10 +221,10 @@ tCheck env (t ::> e) = do
     return t
 tCheck env ((s, t) :-> e) = do
     tt <- tCheck env t
-    unless (isUniverse tt) $ throwError $ "The type of a type must be a universe, which is not the case for \"" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "\"."
+    unless (isUniverse (unErase tt)) $ throwError $ "The type of a type must be a universe, which is not the case for \"" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "\"."
     let env' = extend env s t
     te <- tCheck env' e
-    case te of
+    case unErase te of
         U ls -> do
             ls' <- universe env t
             return $ U (maxLevel ls' ls)
@@ -234,8 +234,11 @@ tCheck _ (U ls) = return $ U ((+1) <$> ls)
 tCheck env (s :+ _i) = findVar env s
 tCheck _ L = return $ U (singleton "" 0)
 
+unErase :: Expr -> Expr
+unErase (Erased e) = e
+unErase e = e
+
 isUniverse :: Expr -> Bool
-isUniverse (Erased (U _)) = True
 isUniverse (U _) = True
 isUniverse _ = False
 
@@ -304,12 +307,8 @@ invalideLevel = ("T", ui 0) :-> ("t", S "T") :-> ("w", S "t") :-> S "w"
 invalidType :: Expr
 invalidType = ("T", ui 0) :-> ("T1", ("t", S "T") :-> S "t") :-> S "T1"
 
-zero :: Expr
-zero = ("a", ui 1) :-> ("b", ui 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
-
 someFunc :: IO ()
 someFunc = do
-    showLam "zero" zero
     showLam "id" id
     showLam "i:+1" $ ("i", L) :-> id :@ "i" :+ 1
     showLam "higher" higher
