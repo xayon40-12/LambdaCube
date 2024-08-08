@@ -7,6 +7,7 @@ import Data.Either (fromRight)
 import Data.Map.Strict (Map, singleton, insert, delete, toList, keys)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
+import Data.Bifunctor (second)
 
 type Sym = String
 type Levels = Map Sym Int
@@ -35,15 +36,20 @@ instance Show Expr where
     show (S s) = s
     show (E s v e) = s ++ " = " ++ show v ++ "; " ++ show e
     show (Erased e) = "'" ++ show e
-    show (f :@ x) = show f ++ " " ++ show x
+    show (f@((_, _) :-> _) :@ x) = "[" ++ show f ++ "] " ++ showApp x
+    show (f :@ x) = show f ++ " " ++ showApp x
     show ((s, t) :-> e)
         | null s = show t ++ " -> " ++ show e
         | t == S "" = s ++ " -> " ++ show e
-        | otherwise = "(" ++ s ++ " : " ++ show t ++ ") -> " ++ show e
+        | otherwise = "(" ++ s ++ ": " ++ show t ++ ") -> " ++ show e
     show (t ::> e) = show t ++ " :> " ++ show e
     show (U l) = "U " ++ showL l
     show (s :+ i) = s ++ "+" ++ show i
     show L = "L"
+
+showApp :: Expr -> String
+showApp (f :@ x) = "[" ++ show f ++ " " ++ showApp x ++ "]"
+showApp e = show e
 
 showL :: Levels -> String
 showL m = showm (toList m)
@@ -198,41 +204,40 @@ type TC a = Either ErrorMsg a
 throwError :: String -> TC a
 throwError = Left
 
-findVar :: Env -> Sym -> TC Expr
+findVar :: Env -> Sym -> TC (IsType, Expr)
 findVar (Env ls) s =
     case lookup s ls of
-    Just t -> return t
-    Nothing -> throwError $ "Connat find variable " ++ s
+        Just t -> return $ case t of
+            (U l) -> (True, U l)
+            v -> (False, v)
+        Nothing -> throwError $ "Connat find variable " ++ s
 
-tCheck :: Env -> Expr -> TC Expr
+type IsType = Bool
+tCheck :: Env -> Expr -> TC (IsType, Expr)
 tCheck env (S s) = findVar env s
-tCheck env (Erased e) = Erased <$> tCheck env e
+tCheck env (Erased e) = second Erased <$> tCheck env e
 tCheck env (f :@ x) = do
-    tf <- tCheck env f
+    (isT, tf) <- tCheck env f
     case tf of
         (s, t) :-> b -> do
-            tx <- tCheck env x
+            (_isT', tx) <- tCheck env x
             unless (betaEqD t tx) $ throwError "Bad function argument type"
-            return $ subst s x b
+            return (isT, subst s x b)
         e -> throwError $ "Non-function in application (" ++ show (f :@ x) ++ "): " ++ show e ++ "."
 tCheck env (t ::> e) = do
-    te <- tCheck env e
-    unless (betaEqD t te) $ throwError $ "Type missmatch (" ++ show t ++ "," ++ show te ++ ") in " ++ show (t ::> e) ++ "."
-    return t
+    (isT, te) <- tCheck env e
+    unless (betaEqD t te) $ throwError $ "Type missmatch (" ++ show (nf t) ++ "," ++ show (nf te) ++ ") in " ++ show (t ::> e) ++ "."
+    return (isT, t)
 tCheck env ((s, t) :-> e) = do
-    tt <- tCheck env t
-    unless (isUniverse tt) $ throwError $ "The type of a type must be a universe, which is not the case for \"" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "\"."
+    (isT, tt) <- tCheck env t
+    unless isT $ throwError $ "The type of a type must be a universe, which is not the case for \"" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "\"."
     let env' = extend env s t
-    te <- tCheck env' e
-    case te of
-        U ls -> do
-            ls' <- universe env t
-            return $ U (maxLevel ls' ls)
-        _ -> return $ (s, t) :-> te
-tCheck env (E s v e) = tCheck env (subst s v e)
-tCheck _ (U ls) = return $ U ((+1) <$> ls)
+    (_isT', te) <- tCheck env' e
+    return (True, (s, t) :-> te)
+tCheck env (E s v e) = tCheck env v *> tCheck env (subst s v e)
+tCheck _ (U ls) = return (True, U ((+1) <$> ls))
 tCheck env (s :+ _i) = findVar env s
-tCheck _ L = return $ U (singleton "" 0)
+tCheck _ L = return (True, U (singleton "" 0))
 
 isUniverse :: Expr -> Bool
 isUniverse (Erased (U _)) = True
@@ -243,7 +248,7 @@ universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
 universe _ (s :+ i) = throwError $ "The term \"" ++ s ++ "+" ++ show i ++ ")\" does not have a universe."
 universe _ (U ls) = return ((+1) <$> ls)
-universe env (S s) = findVar env s >>= (((+(-1)) <$>) <$>) . universe env
+universe env (S s) = findVar env s >>= ((((+(-1)) <$>) <$>) . universe env) . snd
 universe env (f :@ _) = universe env f
 universe env (_ ::> e) = universe env e
 universe env ((s, t) :-> e) = do
@@ -261,7 +266,7 @@ maxLevel l1 l2 = lmax l1 (toList l2)
         lmax acc ((l, i):ls) = lmax (Map.insertWith max l i acc) ls
 
 typeCheck :: Expr -> TC Expr
-typeCheck = tCheck initialEnv
+typeCheck = (snd <$>) . tCheck initialEnv
 
 showLam :: Sym -> Expr -> IO ()
 showLam s lam = case typeCheck lam of

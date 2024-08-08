@@ -20,10 +20,12 @@ sym = do
 
 named :: Parser Expr
 named = do
-  s <- sym <* space <* char '=' <* space
-  v <- expr <* string "; "
+  s <- char '@' *> sym <* spaces <* char '='
+  v <- expr <* string ";"
   E s v <$> expr
 
+special :: Parser Expr
+special = char '#' *> (levelT <|> universe <|> level)
 
 levelT :: Parser Expr
 levelT = char 'L' $> L
@@ -38,7 +40,7 @@ level :: Parser Expr
 level = uncurry (:+) <$> lv
 
 levels :: Parser Levels
-levels = fromList <$> sepBy (try lv <|> (,0) <$> sym) (char ',')
+levels = fromList <$> sepBy1 (try lv <|> ((,0) <$> sym)) (char ',')
 
 universe :: Parser Expr
 universe = U <$> (char 'U' *> space *> levels)
@@ -46,22 +48,22 @@ universe = U <$> (char 'U' *> space *> levels)
 lambda :: Parser Expr
 lambda = do
   s <- char '(' *> sym
-  t <- char ':' *> space *> expr
-  e <- char ')' *> space *> string "->" *> space *> expr
+  t <- char ':' *> expr
+  e <- char ')' *> spaces *> string "->" *> expr
   return $ (s, t) :-> e
 
 application :: Parser Expr
 application = do
-  f <- exprR <* space
-  leftAssociate f <$> expr
-
-leftAssociate :: Expr -> Expr -> Expr
-leftAssociate f (x :@ xs) = leftAssociate (f :@ x) xs
-leftAssociate f x = f :@ x
+  f <- exprR
+  xs <- many1 exprR
+  return $ app f xs
+  where
+    app f [] = f
+    app f (x:xs) = app (f :@ x) xs
 
 typing :: Parser Expr
 typing = do
-  t <- exprT <* space <* string ":>" <* space
+  t <- exprT <* string ":>"
   e <- exprT
   return $ t ::> e
 
@@ -72,16 +74,31 @@ erased :: Parser Expr
 erased = char '\'' *> (Erased <$> expr)
 
 parens :: Parser Expr
-parens = char '(' *> expr <* char ')'
+parens = char '[' *> expr <* char ']'
+
+comment :: Parser Expr
+comment = (string "--" *> many (noneOf ['\n']) *> many (char '\n') *> expr) <|> (string "{- " *> right *> expr)
+  where right = try (string " -}") <|> (anyToken *> right)
+
+exprConstr :: Bool -> Bool -> Parser Expr
+exprConstr enableTyping enableApplication = spaces *> p1 <* spaces
+  where
+    p1 = comment <|> p2 enableTyping
+    p2 True = try typing <|> p3
+    p2 False = p3
+    p3 = erased <|> named <|> special <|> lambda <|> p4 enableApplication
+    p4 True = try application <|> p5
+    p4 False = p5
+    p5 = symbol <|> parens
 
 expr :: Parser Expr
-expr = erased <|> try named <|> try parens <|> levelT <|> universe <|> lambda <|> try typing <|> try application <|> try level <|> symbol
+expr = exprConstr True True
 
 exprT :: Parser Expr
-exprT = erased <|> try named <|> try parens <|> levelT <|> universe <|> lambda <|> try application <|> try level <|> symbol
+exprT = exprConstr False True
 
 exprR :: Parser Expr
-exprR = erased <|> try named <|> try parens <|> levelT <|> universe <|> lambda <|> try level <|> symbol
+exprR = exprConstr False False
 
 parse :: String -> Either ParseError Expr
 parse = P.parse (expr <* eof) ""

@@ -1,9 +1,16 @@
 module Main (main) where
 
+import System.Environment
 import Lib
-import Parser (parseExamples)
+import Parser (parseExamples, parseShow)
 
 main :: IO ()
 main = do
-  someFunc
-  parseExamples
+  args <- getArgs
+  case args of
+    (x:_) -> do
+      s <- readFile x
+      parseShow x s
+    _ -> do
+      someFunc
+      parseExamples
