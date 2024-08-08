@@ -208,6 +208,7 @@ findVar :: Env -> Sym -> TC (IsType, Expr)
 findVar (Env ls) s =
     case lookup s ls of
         Just t -> return $ case t of
+            (Erased (U l)) -> (True, Erased (U l))
             (U l) -> (True, U l)
             v -> (False, v)
         Nothing -> throwError $ "Connat find variable " ++ s
@@ -230,19 +231,14 @@ tCheck env (t ::> e) = do
     return (isT, t)
 tCheck env ((s, t) :-> e) = do
     (isT, tt) <- tCheck env t
-    unless isT $ throwError $ "The type of a type must be a universe, which is not the case for \"" ++ s ++ ": " ++ show t ++ ": " ++ show tt ++ "\"."
+    unless isT $ throwError $ "The type of a type must be a universe, which is not the case for \"[" ++ s ++ ": " ++ show t ++ "]: " ++ show tt ++ "\"."
     let env' = extend env s t
-    (_isT', te) <- tCheck env' e
-    return (True, (s, t) :-> te)
+    (isT', te) <- tCheck env' e
+    return (isT', (s, t) :-> te)
 tCheck env (E s v e) = tCheck env v *> tCheck env (subst s v e)
 tCheck _ (U ls) = return (True, U ((+1) <$> ls))
 tCheck env (s :+ _i) = findVar env s
 tCheck _ L = return (True, U (singleton "" 0))
-
-isUniverse :: Expr -> Bool
-isUniverse (Erased (U _)) = True
-isUniverse (U _) = True
-isUniverse _ = False
 
 universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
@@ -309,12 +305,8 @@ invalideLevel = ("T", ui 0) :-> ("t", S "T") :-> ("w", S "t") :-> S "w"
 invalidType :: Expr
 invalidType = ("T", ui 0) :-> ("T1", ("t", S "T") :-> S "t") :-> S "T1"
 
-zero :: Expr
-zero = ("a", ui 1) :-> ("b", ui 1) :-> ("s", S "a") :-> ("z", S "b") :-> S "z"
-
 someFunc :: IO ()
 someFunc = do
-    showLam "zero" zero
     showLam "id" id
     showLam "i:+1" $ ("i", L) :-> id :@ "i" :+ 1
     showLam "higher" higher

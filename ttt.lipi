@@ -3,4 +3,4 @@
 
 -- Union
 @Union = (i: #L) -> (A: #U i) -> (B: #U i) -> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> P;
-(i: #L) -> (A: #U i) -> (B: #U i) -> (a: A) -> Union [i A] B :> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> l a
+(i: #L) -> (A: #U i) -> (B: #U i) -> (a: A) -> Union i A B :> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> l a
