@@ -21,7 +21,7 @@ sym = do
 named :: Parser Expr
 named = do
   s <- char '@' *> sym <* spaces <* char '='
-  v <- expr <* string ";"
+  v <- expr <* char ';'
   E s v <$> expr
 
 special :: Parser Expr
@@ -52,21 +52,6 @@ lambda = do
   e <- char ')' *> spaces *> string "->" *> expr
   return $ (s, t) :-> e
 
-application :: Parser Expr
-application = do
-  f <- exprR
-  xs <- many1 exprR
-  return $ app f xs
-  where
-    app f [] = f
-    app f (x:xs) = app (f :@ x) xs
-
-typing :: Parser Expr
-typing = do
-  t <- exprT <* string ":>"
-  e <- exprT
-  return $ t ::> e
-
 symbol :: Parser Expr
 symbol = S <$> sym
 
@@ -76,29 +61,23 @@ erased = char '\'' *> (Erased <$> expr)
 parens :: Parser Expr
 parens = char '[' *> expr <* char ']'
 
-comment :: Parser Expr
-comment = (string "--" *> many (noneOf ['\n']) *> many (char '\n') *> expr) <|> (string "{- " *> right *> expr)
+comment :: Parser ()
+comment = (string "--" *> many (noneOf ['\n']) *> many (char '\n') $> ()) <|> (string "{- " *> right $> ())
   where right = try (string " -}") <|> (anyToken *> right)
 
-exprConstr :: Bool -> Bool -> Parser Expr
-exprConstr enableTyping enableApplication = spaces *> p1 <* spaces
-  where
-    p1 = comment <|> p2 enableTyping
-    p2 True = try typing <|> p3
-    p2 False = p3
-    p3 = erased <|> named <|> special <|> lambda <|> p4 enableApplication
-    p4 True = try application <|> p5
-    p4 False = p5
-    p5 = symbol <|> parens
-
 expr :: Parser Expr
-expr = exprConstr True True
-
-exprT :: Parser Expr
-exprT = exprConstr False True
-
-exprR :: Parser Expr
-exprR = exprConstr False False
+expr = do
+  first <- ps
+  op <- string ":>" <|> return ""
+  case op of
+    ":>" -> (first ::>) <$> ps
+    "" -> app first <$> many ps
+    o -> unexpected $ "Unexpeted operator " ++ show o ++ "."
+    where
+      p = erased <|> named <|> special <|> lambda <|> symbol <|> parens
+      ps = spaces *> optional comment *> p <* optional comment <* spaces
+      app f [] = f
+      app f (x:xs) = app (f :@ x) xs
 
 parse :: String -> Either ParseError Expr
 parse = P.parse (expr <* eof) ""
@@ -114,5 +93,5 @@ parseExamples = do
   parseShow " l" "(i: #L) -> #i+0"
   parseShow "id" "(i: '#L) -> @Z = #U i; (T: 'Z) -> (tt: (t1: T) -> (t2: T) -> T) -> (t: T) -> @r = T; r :> @ttt = tt t; ttt t"
   parseShow " U" "#U +1"
-  --             |         |         |         |         |         |         |         |         |         |
-  --             0         10        20        30        40        50        60        70        80        90
+  --             |         |         |         |         |         |         |         |         |         |         |         |
+  --             0         10        20        30        40        50        60        70        80        90        100       110
