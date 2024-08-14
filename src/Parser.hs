@@ -62,22 +62,30 @@ parens :: Parser Expr
 parens = char '[' *> expr <* char ']'
 
 comment :: Parser ()
-comment = (string "--" *> many (noneOf ['\n']) *> many (char '\n') $> ()) <|> (string "{- " *> right $> ())
+comment = (string "--" *> many (noneOf ['\n']) *> spaces $> ()) <|> (string "{- " *> right $> ())
   where right = try (string " -}") <|> (anyToken *> right)
 
 expr :: Parser Expr
-expr = do
-  first <- ps
-  op <- string ":>" <|> return ""
-  case op of
-    ":>" -> (first ::>) <$> ps
-    "" -> app first <$> many ps
-    o -> unexpected $ "Unexpeted operator " ++ show o ++ "."
+expr = opType . opApp $ ps
     where
       p = erased <|> named <|> special <|> lambda <|> symbol <|> parens
-      ps = spaces *> optional comment *> p <* optional comment <* spaces
-      app f [] = f
-      app f (x:xs) = app (f :@ x) xs
+      ps = spaces *> many (comment *> spaces) *> p <* spaces <* many (comment <* spaces)
+      opApp = associate ALeft "" (:@)
+      opType = associate ANone ":>" (::>)
+
+data Associate = ALeft | ARight | ANone
+
+associate :: Associate -> String -> (Expr -> Expr -> Expr) -> Parser Expr -> Parser Expr
+associate a n op p = do
+  l <- p
+  r <- many (string n *> p)
+  go a l r
+  where
+    go _ f [] = return f
+    go _ f [x] = return  $ f `op` x
+    go ANone _f _xs = unexpected $ "operator \"" ++ n ++ "\" is not associative."
+    go ALeft f (x:xs) = go ALeft (f `op` x) xs
+    go ARight f (x:xs) = op f <$> go ARight x xs
 
 parse :: String -> Either ParseError Expr
 parse = P.parse (expr <* eof) ""
@@ -89,9 +97,11 @@ parseShow s e = case parse e of
 
 parseExamples :: IO ()
 parseExamples = do
-  parseShow "zero" "(i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> z" 
-  parseShow " l" "(i: #L) -> #i+0"
+  parseShow "zero" "(i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> z"
   parseShow "id" "(i: '#L) -> @Z = #U i; (T: 'Z) -> (tt: (t1: T) -> (t2: T) -> T) -> (t: T) -> @r = T; r :> @ttt = tt t; ttt t"
+
+  parseShow " l" "(i: #L) -> #i+0"
   parseShow " U" "#U +1"
+  parseShow "id" "(i: #L) -> (T: #U i) -> (x: T) -> T :> x"
   --             |         |         |         |         |         |         |         |         |         |         |         |
   --             0         10        20        30        40        50        60        70        80        90        100       110

@@ -211,7 +211,7 @@ findVar (Env ls) s =
             (Erased (U l)) -> (True, Erased (U l))
             (U l) -> (True, U l)
             v -> (False, v)
-        Nothing -> throwError $ "Connat find variable " ++ s
+        Nothing -> throwError $ "Cannot find variable " ++ s
 
 type IsType = Bool
 tCheck :: Env -> Expr -> TC (IsType, Expr)
