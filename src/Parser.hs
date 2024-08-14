@@ -66,7 +66,7 @@ comment = (string "--" *> many (noneOf ['\n']) *> spaces $> ()) <|> (string "{- 
   where right = try (string " -}") <|> (anyToken *> right)
 
 expr :: Parser Expr
-expr = opType . opApp $ ps
+expr = opType . opApp $ ps -- The priority of opperator is higher to the right. Currently opApp has the highest priority
     where
       p = erased <|> named <|> special <|> lambda <|> symbol <|> parens
       ps = spaces *> many (comment *> spaces) *> p <* spaces <* many (comment <* spaces)
