@@ -21,7 +21,7 @@ sym = do
 named :: Parser Expr
 named = do
   s <- char '@' *> sym <* spaces <* char '='
-  v <- expr <* char ';' <* spaces
+  v <- expr <* char ';' <* spaces <* comments
   (E s v <$> expr) <|> return v
 
 special :: Parser Expr
@@ -68,11 +68,14 @@ comment = end <|> inner
     inner = mappend <$> try (string "{- ") <*> ((mappend <$> inner <*> innerRight) <|> innerRight)
     innerRight = try (string " -}") <|> ((:) <$> anyToken <*> innerRight)
 
+comments :: Parser [String]
+comments = many (comment <* spaces)
+
 expr :: Parser Expr
 expr = opType . opApp $ ps -- The priority of opperator is higher to the right. Currently opApp has the highest priority
     where
       p = erased <|> named <|> special <|> lambda <|> symbol <|> parens
-      ps = spaces *> many (comment *> spaces) *> p <* spaces <* many (comment <* spaces)
+      ps = spaces *> comments *> p <* spaces <* comments
       opApp = associate ALeft "" (:@)
       opType = associate ANone ":>" (::>)
 

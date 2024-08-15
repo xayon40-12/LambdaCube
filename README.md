@@ -76,57 +76,13 @@ If two types `A` and `B` are beta-equivalent `A =_beta B`, then a value `a` of t
 
 ## Examples
 
+See files with `.lam3` extension in the `math/` folder.
+
+### Todo
+
 The symbol '???' is used when a proof is not finished to be written. It is not valid in the language but just used here for unfinished work.
-
-### Void
-The empty type
+#### Nat
 ```
-@Void = (i: #L) -> (A: #U i) -> A;
-```
-
-### Union
-```
-@Union = (i: #L) -> (A: #U i) -> (B: #U i) -> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> P;
-@Left = (i: #L) -> (A: #U i) -> (B: #U i) -> (a: A) -> Union i A B :> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> l a;
-@Right = (i: #L) -> (A: #U i) -> (B: #U i) -> (b: B) -> Union i A B :> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> r b;
-```
-
-### Dependent pair
-```
-@Pair = (i: #L) -> (A: #U i) -> (B: (a: A) -> #U i) -> #U i+1 :> 
-  (P: #U i) -> (p: (a: A) -> (b: B a) -> P) -> P;
-@pair = (i: #L) -> (A: #U i) -> (B: (a: A) -> #U i) -> (a: A) -> (b: B a) -> Pair i A B :>
-  (P: #U i) -> (p: (a: A) -> (b: B a) -> P) -> p a b;
-@first = (i: #L) -> (A: #U i) -> (B: (a: A) -> #U i) -> (p: Pair i A B) -> A :>
-  p A [(a: A) -> (b: B a) -> a];
-@second = (i: #L) -> (A: #U i) -> (B: (a: A) -> #U i) -> (p: Pair i A B) -> B [first i A B p] :>
-  p [B a] [(a: A) -> (b: B a) -> b];
-```
-
-### Equal
-```
-@Equal = (i: #L) -> (A: #U i) -> (a: A) -> (b: A) -> #U i+1 :>
-  (P: (a: A) -> #U i) -> (p: P a) -> P b;
-@Refl = (i: #L) -> (A: #U i) -> (a: A) -> Equal i A a a :>
-  (P: (a: A) -> #U i) -> (p: P a) -> p;
-
-@rho = (i: #L) -> (T: #U i) -> (t1: T) -> (t2: T) -> (e: Equal i T t1 t2) -> (Tt: (t: T) -> #U i) -> (t: Tt t1) -> Tt t2 :>
-  e [(t: T) -> Tt t] t;
-
-@symm = (i: #L) -> (A: #U i) -> (a: A) -> (b: A) -> (e: Equal i A a b) -> Equal i A b a :>
-  (P: (a: A) -> #U i) -> e [(x: A) -> (p: P x) -> P a] [Refl i A a P];
-```
-
-### Nat
-```
-@CNat = (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> #U i :> P;
-@CZero = (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> CNat i P s z :> z;
-@CSucc = (n: CNat) -> (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> CNat i P s z :> s [n i P s z];
-
-@INat = (n: CNat) -> (i: #L) -> (P: (n: CNat) -> #U i) -> (s: (n: CNat) -> (p: P n) -> P [CSucc n]) -> (z: P CZero) -> #U i :> P n;
-@IZero = (i: #L) -> (P: (n: CNat) -> #U i) -> (s: (n: CNat) -> (p: P n) -> P [CSucc n]) -> (z: P CZero) -> INat CZero i P s z :> z;
-@ISucc = (n: CNat) -> (in: INat n) -> (i: #L) -> (P: (n: CNat) -> #U i) -> (s: (n: CNat) -> (p: P n) -> P [CSucc n]) -> (z: P CZero) -> INat [CSucc n] i P s z :> s n [in i P s z];
-
 @Nat = (i: #L) -> (n: CNat i /\ INat n i);
 @Zero = Nat :> (i: #L) -> CZero i ^ IZero i;
 @Succ = (n: Nat) -> Nat :> [CSucc (n i).1] ^ [ISucc n.1 n.2];

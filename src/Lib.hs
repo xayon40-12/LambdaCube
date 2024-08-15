@@ -51,6 +51,7 @@ instance Show Expr where
 
 showApp :: Expr -> String
 showApp (f :@ x) = "[" ++ show f ++ " " ++ showApp x ++ "]"
+showApp (t ::> x) = "[" ++ show t ++ " :> " ++ showApp x ++ "]"
 showApp e = show e
 
 showL :: Levels -> String
@@ -89,8 +90,20 @@ nf :: Expr -> Expr
 nf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        spine (t ::> e) [] = nf t ::> nf e
+        spine (_t ::> e) [] = nf e
+        -- spine (t ::> e) [] = nf t ::> nf e
         spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
+        spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
+        spine (E s v e) xs = spine (subst s v e) xs
+        spine (Erased e) [] = Erased (nf e)
+        spine f xs = app f xs
+        app f xs = foldl (:@) f (map nf xs)
+whnf :: Expr -> Expr
+whnf expr = spine expr []
+    where
+        spine (f :@ x) xs = spine f (x:xs)
+        spine (_t ::> e) [] = nf e
+        -- spine (t ::> e) [] = t ::> nf e
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
         spine (E s v e) xs = spine (subst s v e) xs
         spine (Erased e) [] = Erased (nf e)
@@ -141,18 +154,22 @@ subst s x = sub
 substVar :: Sym -> Sym -> Expr -> Expr
 substVar s s' = subst s (S s')
 
-data Direction = Symmetric | Directional
+data Direction = Symmetric | Directional IsType
 
 alphaEq :: Direction -> Expr -> Expr -> Bool
 alphaEq _ (S s) (S s') = s == s'
 alphaEq d (f :@ x) (f' :@ x') = alphaEq d f f' && alphaEq d x x'
-alphaEq d (t ::> e) (t' ::> e') = alphaEq d e e' && alphaEq d t t'
+alphaEq d@Symmetric (t ::> e) (t' ::> e') = alphaEq d e e' && alphaEq d t t'
+alphaEq d@(Directional _) (_t ::> e) e' = alphaEq d e e'
+alphaEq d@(Directional _) e (_t' ::> e') = alphaEq d e e'
 alphaEq d ((s, t) :-> e) ((s', t') :-> e') = alphaEq d e (substVar s' s e') && alphaEq d t t'
 alphaEq Symmetric (U ls) (U ls') = ls == ls'
-alphaEq Directional (U ls) (U ls') = universeValid ls ls'
+alphaEq (Directional _) (U ls) (U ls') = universeValid ls ls'
+alphaEq (Directional Nothing) (U _) _ = False
+alphaEq (Directional (Just ls')) (U ls) _ = universeValid ls ls'
 alphaEq _ L L = True
 alphaEq Symmetric (s :+ i) (s' :+ i') = s == s' && i == i'
-alphaEq Directional (s :+ i) (s' :+ i') = s == s' && i >= i'
+alphaEq (Directional _) (s :+ i) (s' :+ i') = s == s' && i >= i'
 alphaEq d (E s v e) e' = alphaEq d (subst s v e) e'
 alphaEq d e (E s v e') = alphaEq d e (subst s v e')
 alphaEq d (Erased e) (Erased e') = alphaEq d e e'
@@ -171,8 +188,8 @@ betaEq :: Expr -> Expr -> Bool
 betaEq e1 e2 = alphaEq Symmetric (nf e1) (nf e2)
 
 -- In case it is used to check that the type of a term correspond to an expected type, the expeted type should be provided first and the term type second.
-betaEqD :: Expr -> Expr -> Bool
-betaEqD e1 e2 = alphaEq Directional (nf e1) (nf e2)
+betaEqD :: Expr -> Expr -> IsType -> Bool
+betaEqD e1 e2 isT = alphaEq (Directional isT) (nf e1) (nf e2)
 
 erased :: Expr -> Expr
 erased (S s) = S s
@@ -191,16 +208,16 @@ erased L = L
 erasedBetaEq :: Expr -> Expr -> Bool
 erasedBetaEq e1 e2 = alphaEq Symmetric (erased . nf $ e1) (erased . nf $ e2)
 
-erasedBetaEqD :: Expr -> Expr -> Bool
-erasedBetaEqD e1 e2 = alphaEq Directional (erased . nf $ e1) (erased . nf $ e2)
+erasedBetaEqD :: Expr -> Expr -> IsType -> Bool
+erasedBetaEqD e1 e2 isT = alphaEq (Directional isT) (erased . nf $ e1) (erased . nf $ e2)
 
-newtype Env = Env [(Sym, Expr)] deriving (Show)
+newtype Env = Env (Map Sym Expr) deriving (Show)
 
 initialEnv :: Env
-initialEnv = Env []
+initialEnv = Env Map.empty
 
 extend :: Env -> Sym -> Expr -> Env
-extend (Env ls) s t = Env ((s, t) : ls)
+extend (Env ls) s t = Env $ Map.insert s t ls
 
 type ErrorMsg = String
 type TC a = Either ErrorMsg a
@@ -209,39 +226,42 @@ throwError = Left
 
 findVar :: Env -> Sym -> TC (IsType, Expr)
 findVar (Env ls) s =
-    case lookup s ls of
-        Just t -> return $ case t of
-            (Erased (U l)) -> (True, Erased (U l))
-            (U l) -> (True, U l)
-            v -> (False, v)
+    case Map.lookup s ls of
+        Just t -> second (const (nf t)) <$> tCheck (Env ls) t
         Nothing -> throwError $ "Cannot find variable " ++ s
 
-type IsType = Bool
+unTyped :: Expr -> Expr
+unTyped (_t ::> e) = e
+unTyped e = e
+
+type IsType = Maybe Levels
 tCheck :: Env -> Expr -> TC (IsType, Expr)
 tCheck env (S s) = findVar env s
 tCheck env (Erased e) = second Erased <$> tCheck env e
 tCheck env (f :@ x) = do
     (isT, tf) <- tCheck env f
-    case tf of
+    case whnf tf of
         (s, t) :-> b -> do
-            (_isT', tx) <- tCheck env x
-            unless (betaEqD t tx) $ throwError "Bad function argument type"
+            (isT', tx) <- tCheck env x
+            unless (betaEqD t tx isT') $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ",\n" ++ show (nf tx) ++ "\nin " ++ show (t ::> x) ++ "."
             return (isT, subst s x b)
         e -> throwError $ "Non-function in application (" ++ show (f :@ x) ++ "): " ++ show e ++ "."
 tCheck env (t ::> e) = do
     (isT, te) <- tCheck env e
-    unless (betaEqD t te) $ throwError $ "Type missmatch (" ++ show (nf t) ++ "," ++ show (nf te) ++ ") in " ++ show (t ::> e) ++ "."
+    unless (betaEqD t te isT) $ throwError $ "Type missmatch:\n" ++ show (nf t) ++ ",\n" ++ show (nf te) ++ "\nin " ++ show (t ::> e) ++ "."
     return (isT, t)
 tCheck env ((s, t) :-> e) = do
     (isT, tt) <- tCheck env t
-    unless isT $ throwError $ "The type of a type must be a universe, which is not the case for \"[" ++ s ++ ": " ++ show t ++ "]: " ++ show tt ++ "\"."
-    let env' = extend env s t
-    (isT', te) <- tCheck env' e
-    return (isT', (s, t) :-> te)
+    case isT of
+        Nothing -> throwError $ "The type of a type must be a universe, which is not the case for \"[" ++ s ++ ": " ++ show t ++ "]: " ++ show tt ++ "\"."
+        Just l -> do
+            let env' = extend env s t
+            (isT', te) <- tCheck env' e
+            return (maxLevel l <$> isT', (s, t) :-> te)
 tCheck env (E s v e) = tCheck env v *> tCheck env (subst s v e)
-tCheck _ (U ls) = return (True, U ((+1) <$> ls))
+tCheck _ (U ls) = let l = (+1) <$> ls in return (Just l, U l)
 tCheck env (s :+ _i) = findVar env s
-tCheck _ L = return (True, U (singleton "" 0))
+tCheck _ L = let l = singleton "" 0 in return (Just l, U l)
 
 universe :: Env -> Expr -> TC Levels
 universe _ L = return $ singleton "" 0
@@ -277,12 +297,12 @@ showLam s lam = do
         Right t -> do
          putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "ERROR" (-1)) (universe initialEnv t) of ls -> U ls)
          putStrLn $ s ++ " = " ++ show (erased lam)
-        Left err -> putStrLn $ s ++ ": " ++ show err
+        Left err -> putStrLn $ s ++ ": " ++ err
 
 typeCheckVar :: Expr -> Expr -> TC Bool
 typeCheckVar ty var = do
-    tv <- typeCheck var
-    return $ betaEqD ty tv
+    (isT, tv) <- tCheck initialEnv var
+    return $ betaEqD ty tv isT
 
 lv :: Sym -> Int -> Levels
 lv = singleton
