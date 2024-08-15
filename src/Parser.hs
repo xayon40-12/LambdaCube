@@ -21,8 +21,8 @@ sym = do
 named :: Parser Expr
 named = do
   s <- char '@' *> sym <* spaces <* char '='
-  v <- expr <* char ';'
-  E s v <$> expr
+  v <- expr <* char ';' <* spaces
+  (E s v <$> expr) <|> return v
 
 special :: Parser Expr
 special = char '#' *> (levelT <|> universe <|> level)
