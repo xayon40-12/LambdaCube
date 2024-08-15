@@ -6,7 +6,7 @@
 @Succ = (n: CNat) -> (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> P :> s [n i P s z];
 -- @One = Succ Zero;
 -- CNat :> Zero
-
+{- {- aoeu -} aoeusnth -}
 -- Union
 @Union = (i: #L) -> (A: #U i) -> (B: #U i) -> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> P;
 @InL = (i: #L) -> (A: #U i) -> (B: #U i) -> (a: A) -> Union i A B :> (P: #U i) -> (l: (a: A) -> P) -> (r: (b: B) -> P) -> l a;

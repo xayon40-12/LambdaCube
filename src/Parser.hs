@@ -61,9 +61,12 @@ erased = char '\'' *> (Erased <$> expr)
 parens :: Parser Expr
 parens = char '[' *> expr <* char ']'
 
-comment :: Parser ()
-comment = (string "--" *> many (noneOf ['\n']) *> spaces $> ()) <|> (string "{- " *> right $> ())
-  where right = try (string " -}") <|> (anyToken *> right)
+comment :: Parser String
+comment = end <|> inner
+  where
+    end = mappend <$> try (string "--") <*> many (noneOf ['\n'])
+    inner = mappend <$> try (string "{- ") <*> ((mappend <$> inner <*> innerRight) <|> innerRight)
+    innerRight = try (string " -}") <|> ((:) <$> anyToken <*> innerRight)
 
 expr :: Parser Expr
 expr = opType . opApp $ ps -- The priority of opperator is higher to the right. Currently opApp has the highest priority
