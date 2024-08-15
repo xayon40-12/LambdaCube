@@ -1,6 +1,6 @@
 module Lib (module Lib) where
 
-import Data.List ( (\\), intercalate )
+import Data.List (intercalate)
 import Control.Monad (unless)
 import Prelude hiding (id)
 import Data.Either (fromRight)
@@ -8,6 +8,8 @@ import Data.Map.Strict (Map, singleton, insert, delete, toList, keys)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
 import Data.Bifunctor (second)
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 type Sym = String
 type Levels = Map Sym Int
@@ -64,16 +66,16 @@ showU l i
     | i == 0 =  l
     | otherwise =  l ++ "+" ++ show i
 
-freeVars :: Expr -> [Sym]
-freeVars (S s) = [s]
+freeVars :: Expr -> Set Sym
+freeVars (S s) = Set.singleton s
 freeVars (Erased e) = freeVars e
-freeVars (f :@ a) = freeVars f ++ freeVars a
-freeVars (t ::> e) = freeVars t ++ freeVars e
-freeVars ((s, t) :-> e) = freeVars t ++ (freeVars e \\ [s])
-freeVars (U ls) = keys ls
-freeVars (s :+ _) = [s]
-freeVars (E s v e) = freeVars v ++ (freeVars e \\ [s])
-freeVars L = []
+freeVars (f :@ a) = freeVars f <> freeVars a
+freeVars (t ::> e) = freeVars t <> freeVars e
+freeVars ((s, t) :-> e) = freeVars t <> Set.delete s (freeVars e)
+freeVars (U ls) = Set.fromList $ keys ls
+freeVars (s :+ _) = Set.singleton s
+freeVars (E s v e) = freeVars v <> Set.delete s (freeVars e)
+freeVars L = Set.empty
 
 -- whnf :: Expr -> Expr
 -- whnf expr = spine expr []
@@ -134,7 +136,7 @@ subst s x = sub
         newSym e' s' = loop s'
             where
                 loop s'' = if s'' `elem` vars then loop (s' ++ "'") else s''
-                vars = fsx ++ freeVars e'
+                vars = fsx <> freeVars e'
 
 substVar :: Sym -> Sym -> Expr -> Expr
 substVar s s' = subst s (S s')
@@ -179,6 +181,7 @@ erased (f :@ x) = erased f :@ erased x
 erased (_t ::> e) = erased e
 erased ((_, Erased _) :-> e) = erased e
 erased ((s, _t) :-> e) = (s, S "") :-> erased e
+-- erased (E s v e) = E s (erased v) (erased e)
 erased (E s v e) = erased $ subst s v e
 erased (U ls) = U ls
 erased (s :+ i) = s :+ i
@@ -265,11 +268,16 @@ typeCheck :: Expr -> TC Expr
 typeCheck = (snd <$>) . tCheck initialEnv
 
 showLam :: Sym -> Expr -> IO ()
-showLam s lam = case typeCheck lam of
-     Right t -> do
+showLam s lam = do
+    putStrLn $ s ++ ":\n" ++ show lam
+    print ""
+    putStrLn $ s ++ ":\n" ++ show (erased lam)
+    print ""
+    case typeCheck lam of
+        Right t -> do
          putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "ERROR" (-1)) (universe initialEnv t) of ls -> U ls)
          putStrLn $ s ++ " = " ++ show (erased lam)
-     Left err -> putStrLn $ s ++ ": " ++ show err
+        Left err -> putStrLn $ s ++ ": " ++ show err
 
 typeCheckVar :: Expr -> Expr -> TC Bool
 typeCheckVar ty var = do
