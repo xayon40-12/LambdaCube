@@ -5,6 +5,16 @@ This is my attempt to do a dependently type programming language. It is inspired
 - [Simpler, Easier!](https://augustss.blogspot.com/2007/10/simpler-easier-in-recent-paper-simply.html?m=1)
 - [From realizability to induction via dependent intersection](https://www.sciencedirect.com/science/article/pii/S0168007218300277?ref=pdf_download&fr=RR-2&rr=8a9706eecc573c95)
 
+**Table of contents:**
+- [Grammar](#Grammar)
+- [Cumulative Universes](#Cumulative-Universes)
+  - [Level](Level)
+- [Dependent intersection](#Dependent-intersection)
+- [Beta equivalence](#Beta-equivalence)
+- [Examples](#Examples)
+  - [Todo](#Todo)
+    - [Nat](#Nat)
+
 ## Grammar
 
 In the definition of the grammar for this language, a symbol denoted by `S` corresponds to any non empty sequence of characters which does not include any whitespaces and which does not already appear as literal in the later grammar.
@@ -76,7 +86,7 @@ If two types `A` and `B` are beta-equivalent `A =_beta B`, then a value `a` of t
 
 ## Examples
 
-See files with `.lam3` extension in the `math/` folder.
+See files with `.lam3` extension in the [math](math/) folder.
 
 ### Todo
 
