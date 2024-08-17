@@ -1,3 +1,6 @@
+-- Id
+@Id = (i: '#L) -> (T: '#U i) -> (t: T) -> T :> t;
+
 -- Void
 @Void = (i: #L) -> (A: #U i) -> A;
 

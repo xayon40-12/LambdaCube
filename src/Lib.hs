@@ -45,9 +45,9 @@ instance Show Expr where
         | t == S "" = s ++ " -> " ++ show e
         | otherwise = "(" ++ s ++ ": " ++ show t ++ ") -> " ++ show e
     show (t ::> e) = show t ++ " :> " ++ show e
-    show (U l) = "U " ++ showL l
+    show (U l) = "#U " ++ showL l
     show (s :+ i) = s ++ "+" ++ show i
-    show L = "L"
+    show L = "#L"
 
 showApp :: Expr -> String
 showApp (f :@ x) = "[" ++ show f ++ " " ++ showApp x ++ "]"
