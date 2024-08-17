@@ -25,8 +25,8 @@
 @rho = (i: #L) -> (T: #U i) -> (t1: T) -> (t2: T) -> (e: Equal i T t1 t2) -> (Tt: (t: T) -> #U i) -> (t: Tt t1) -> Tt t2 :>
   e [(t: T) -> Tt t] t;
 
--- @symm = (i: #L) -> (A: #U i) -> (a: A) -> (b: A) -> (e: Equal i A a b) -> Equal i A b a :>
---   (P: (a: A) -> #U i) -> e [(x: A) -> (p: P x) -> P a] [Refl i A a P];
+@symm = (i: #L) -> (A: #U i) -> (a: A) -> (b: A) -> (e: Equal #i+1 A a b) -> Equal i A b a :> -- WARNING: should `e` be of level #i+1
+  (P: (a: A) -> #U i) -> e [(x: A) -> (p: P x) -> P a] [Refl i A a P];
 
 -- Nat
 @CNat = (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> #U i :> P;

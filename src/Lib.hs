@@ -90,8 +90,8 @@ nf :: Expr -> Expr
 nf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        spine (_t ::> e) [] = nf e
-        -- spine (t ::> e) [] = nf t ::> nf e
+        -- spine (_t ::> e) [] = nf e
+        spine (t ::> e) [] = nf t ::> nf e
         spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
         spine (E s v e) xs = spine (subst s v e) xs
@@ -102,8 +102,8 @@ whnf :: Expr -> Expr
 whnf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        spine (_t ::> e) [] = nf e
-        -- spine (t ::> e) [] = t ::> nf e
+        -- spine (_t ::> e) [] = nf e
+        spine (t ::> e) [] = t ::> nf e
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
         spine (E s v e) xs = spine (subst s v e) xs
         spine (Erased e) [] = Erased (nf e)
@@ -259,7 +259,7 @@ tCheck env (S s) = findVar env s
 tCheck env (Erased e) = second Erased <$> tCheck env e
 tCheck env (f :@ x) = do
     (isT, tf) <- tCheck env f
-    case whnf tf of
+    case unTyped . whnf $ tf of
         (s, t) :-> b -> do
             (_isT', tx) <- tCheck env x
             unless (validTyping env t tx) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ",\n" ++ show (nf tx) ++ "\nin " ++ show (t ::> x) ++ "."
