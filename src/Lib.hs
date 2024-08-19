@@ -36,10 +36,12 @@ infix 8 :+
 
 instance Show Expr where
     show (S s) = s
-    show (E s v e) = s ++ " = " ++ show v ++ "; " ++ show e
+    show (E s v e) = "@" ++ s ++ " = " ++ show v ++ "; " ++ show e
     show (Erased e) = "'" ++ show e
+    -- show (f :@ Erased _x) = show f
     show (f@((_, _) :-> _) :@ x) = "[" ++ show f ++ "] " ++ showApp x
     show (f :@ x) = show f ++ " " ++ showApp x
+    -- show ((_s, Erased _t) :-> e) = show e
     show ((s, t) :-> e)
         | null s = show t ++ " -> " ++ show e
         | t == S "" = s ++ " -> " ++ show e
@@ -90,11 +92,11 @@ nf :: Expr -> Expr
 nf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        -- spine (_t ::> e) [] = nf e
         spine (t ::> e) [] = nf t ::> nf e
         spine ((s, t) :-> e) [] = (s, nf t) :-> nf e
+        spine ((s, _t) :-> e) (Erased x:xs) = spine (subst s (unErase x) e) xs
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
-        spine (E s v e) xs = spine (subst s v e) xs
+        spine (E s v e) xs = spine (subst s v (nf e)) xs
         spine (Erased e) [] = Erased (nf e)
         spine f xs = app f xs
         app f xs = foldl (:@) f (map nf xs)
@@ -102,8 +104,8 @@ whnf :: Expr -> Expr
 whnf expr = spine expr []
     where
         spine (f :@ x) xs = spine f (x:xs)
-        -- spine (_t ::> e) [] = nf e
         spine (t ::> e) [] = t ::> nf e
+        spine ((s, _t) :-> e) (Erased x:xs) = spine (subst s (unErase x) e) xs
         spine ((s, _t) :-> e) (x:xs) = spine (subst s x e) xs
         spine (E s v e) xs = spine (subst s v e) xs
         spine (Erased e) [] = Erased (nf e)
@@ -142,7 +144,7 @@ subst s x = sub
             S l' -> if s' == s then l' :+ i else l
             s'' :+ i' -> if s' == s then s'' :+ (i+i') else l
             _ -> l
-        sub (Erased e) = Erased (sub e)
+        sub (Erased e) =  Erased (sub e)
         sub L = L
 
         fsx = freeVars x
@@ -218,7 +220,7 @@ findVar (Env ls) s =
         Nothing -> throwError $ "Cannot find variable " ++ s
 
 unTyped :: Expr -> Expr
-unTyped (_t ::> e) = e
+unTyped (_t ::> e) = unTyped e
 unTyped e = e
 
 validTyping :: Env -> Expr -> Expr -> Bool
@@ -251,21 +253,40 @@ universe env ((s, t) :-> e) = do
     return $ maxLevel u1 u2
 universe env (E s v e) = universe env (subst s v e)
 universe env (Erased e) = universe env e
--- universe _ (Erased e) = throwError $ "An erased value \"'e\" does not have a universe, for \"'e = " ++ show e ++ "\""
+
+sameErasure :: Expr -> Expr -> Bool
+sameErasure (Erased _) (Erased _) = True
+sameErasure (Erased _) _ = False
+sameErasure _ (Erased _) = False
+sameErasure _ _ = True
+
+addErased :: Expr -> Expr
+addErased (Erased e) = Erased e
+addErased e = Erased e
+
+unErase :: Expr -> Expr
+unErase (Erased e) = e
+unErase e = e
+
+propagateErase :: Expr -> Expr
+propagateErase (Erased ((s, t) :-> e)) = (s, Erased t) :-> Erased e
+propagateErase e = e
 
 type IsType = Maybe Levels
 tCheck :: Env -> Expr -> TC (IsType, Expr)
 tCheck env (S s) = findVar env s
-tCheck env (Erased e) = second Erased <$> tCheck env e
+tCheck env (Erased e) = second addErased <$> tCheck env e
 tCheck env (f :@ x) = do
     (isT, tf) <- tCheck env f
-    case unTyped . whnf $ tf of
+    (_isT', tx) <- tCheck env x
+    case propagateErase . unTyped . whnf $ tf of
         (s, t) :-> b -> do
-            (_isT', tx) <- tCheck env x
-            unless (validTyping env t tx) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ",\n" ++ show (nf tx) ++ "\nin " ++ show (t ::> x) ++ "."
-            return (isT, subst s x b)
+            unless (sameErasure t x) $ throwError $ "In application the erasure must match and be specified manually, erasure of \"" ++ show t ++ "\" and \"" ++ show x ++ "\" differ"
+            unless (validTyping env t tx) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ",\n" ++ show (nf tx) ++ "\nin " ++ show (f :@ x) ++ "."
+            return (isT, subst s (unErase x) b)
         e -> throwError $ "Non-function in application (" ++ show (f :@ x) ++ "): " ++ show e ++ "."
 tCheck env (t ::> e) = do
+    _ <- tCheck env t
     (isT, te) <- tCheck env e
     unless (validTyping env t te) $ throwError $ "Type missmatch:\n" ++ show (nf t) ++ ",\n" ++ show (nf te) ++ "\nin " ++ show (t ::> e) ++ "."
     return (isT, t)
@@ -294,13 +315,11 @@ typeCheck = (snd <$>) . tCheck initialEnv
 showLam :: Sym -> Expr -> IO ()
 showLam s lam = do
     putStrLn $ s ++ ":\n" ++ show lam
-    print ""
     putStrLn $ s ++ ":\n" ++ show (erased lam)
-    print ""
     case typeCheck lam of
         Right t -> do
          putStrLn $ s ++ " :: " ++ show t ++ " | " ++ show (case fromRight (singleton "ERROR" (-1)) (universe initialEnv t) of ls -> U ls)
-         putStrLn $ s ++ " = " ++ show (erased lam)
+         putStrLn $ s ++ " e.nf= " ++ show (erased . nf $ lam)
         Left err -> putStrLn $ s ++ ": " ++ err
 
 typeCheckVar :: Expr -> Expr -> TC Bool

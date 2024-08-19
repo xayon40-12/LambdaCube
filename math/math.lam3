@@ -32,10 +32,11 @@
   (P: (a: A) -> #U i) -> e [(x: A) -> (p: P x) -> P a] [Refl i A a P];
 
 -- Nat
-@CNat = (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> #U i :> P;
-@CZero = (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> CNat i P s z :> z;
-@CSucc = (n: CNat) -> (i: #L) -> (P: #U i) -> (s: (p: P) -> P) -> (z: P) -> CNat i P s z :> s [n i P s z];
+@CNat = (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> '#U i :> P;
+@CZero = (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> z;
+@CSucc = (n: CNat) -> (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> s [n 'i 'P s z];
 
-@INat = (n: CNat) -> (i: #L) -> (P: (n: CNat) -> #U i) -> (s: (n: CNat) -> (p: P n) -> P [CSucc n]) -> (z: P CZero) -> #U i :> P n;
-@IZero = (i: #L) -> (P: (n: CNat) -> #U i) -> (s: (n: CNat) -> (p: P n) -> P [CSucc n]) -> (z: P CZero) -> INat CZero i P s z :> z;
-@ISucc = (n: CNat) -> (in: INat n) -> (i: #L) -> (P: (n: CNat) -> #U i) -> (s: (n: CNat) -> (p: P n) -> P [CSucc n]) -> (z: P CZero) -> INat [CSucc n] i P s z :> s n [in i P s z];
+@INat = (n: 'CNat) -> (i: '#L) -> (P: '(n: CNat) -> #U i) -> (s: (n: 'CNat) -> (p: P 'n) -> P '['CSucc 'n]) -> (z: P 'CZero) -> '#U i :> P 'n;
+@IZero = (i: #L) -> (P: '(n: CNat) -> #U i) -> (s: (n: 'CNat) -> (p: P 'n) -> P '['CSucc 'n]) -> (z: P 'CZero) -> INat 'CZero 'i 'P s z :> z;
+@ISucc = (n: 'CNat) -> (in: INat 'n) -> (i: '#L) -> (P: '(n: CNat) -> #U i) -> (s: (n: 'CNat) -> (p: P 'n) -> P '['CSucc 'n]) -> (z: P 'CZero) -> INat '['CSucc 'n] 'i 'P s z :> s 'n [in 'i 'P s z];
+

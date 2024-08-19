@@ -21,8 +21,8 @@ sym = do
 named :: Parser Expr
 named = do
   s <- char '@' *> sym <* spaces <* char '='
-  v <- expr <* char ';' <* spaces <* comments
-  (E s v <$> expr) <|> return v
+  v <- opExpr <* char ';' <* spaces <* comments
+  (E s v <$> opExpr) <|> return v
 
 special :: Parser Expr
 special = char '#' *> (levelT <|> universe <|> level)
@@ -48,8 +48,8 @@ universe = U <$> (char 'U' *> space *> levels)
 lambda :: Parser Expr
 lambda = do
   s <- char '(' *> sym
-  t <- char ':' *> expr
-  e <- char ')' *> spaces *> string "->" *> expr
+  t <- char ':' *> opExpr
+  e <- char ')' *> spaces *> string "->" *> opExpr
   return $ (s, t) :-> e
 
 symbol :: Parser Expr
@@ -59,7 +59,7 @@ erased :: Parser Expr
 erased = char '\'' *> (Erased <$> expr)
 
 parens :: Parser Expr
-parens = char '[' *> expr <* char ']'
+parens = char '[' *> opExpr <* char ']'
 
 comment :: Parser String
 comment = end <|> inner
@@ -72,10 +72,14 @@ comments :: Parser [String]
 comments = many (comment <* spaces)
 
 expr :: Parser Expr
-expr = opType . opApp $ ps -- The priority of opperator is higher to the right. Currently opApp has the highest priority
+expr = ps
     where
       p = erased <|> named <|> special <|> lambda <|> symbol <|> parens
       ps = spaces *> comments *> p <* spaces <* comments
+
+opExpr :: Parser Expr
+opExpr = opType . opApp $ expr -- The priority of opperator is higher to the right. Currently opApp has the highest priority
+    where
       opApp = associate ALeft "" (:@)
       opType = associate ANone ":>" (::>)
 
@@ -94,7 +98,7 @@ associate a n op p = do
     go ARight f (x:xs) = op f <$> go ARight x xs
 
 parse :: String -> Either ParseError Expr
-parse = P.parse (expr <* eof) ""
+parse = P.parse (opExpr <* eof) ""
 
 parseShow :: Sym -> String -> IO ()
 parseShow s e = case parse e of
