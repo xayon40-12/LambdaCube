@@ -8,6 +8,7 @@ This is my attempt to do a dependently type programming language. It is inspired
 **Table of contents:**
 - [Grammar](#Grammar)
 - [Erasure](#erasure)
+  - [Erasure mark on lambda](#Erasure-mark-on-lambda)
 - [Cumulative Universes](#Cumulative-Universes)
   - [Level](Level)
 - [Dependent intersection](#Dependent-intersection)
@@ -66,6 +67,10 @@ a level `i` and a generic type `T` are needed to type the identity function. The
 t -> t
 ```
 which is the identity function in untyped lambda calculus.
+
+### Erasure mark on lambda
+
+When a lambda (a term or a type) is marked to be erased, the mark is propagated inside the lambda to the type of the symbol and to the expression. In `(P: '(t: T) -> #U i) -> (t: T) -> '#U i :> P 't` we see that to provide `t` to `P` we most mark it a erased so that it would have the erased type `'T` due to the propagation of the erased mark in `P` from `'(t: T) -> #U i` to `(t: 'T) -> '#U i`.
 
 ## Cumulative Universes
 A universe is a type of type indexed by a level. For a level `l`, the corresponding universe is denoted by `U l`.
