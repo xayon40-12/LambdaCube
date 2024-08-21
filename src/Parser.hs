@@ -45,12 +45,18 @@ levels = fromList <$> sepBy1 (try lv <|> ((,0) <$> sym)) (char ',')
 universe :: Parser Expr
 universe = U <$> (char 'U' *> space *> levels)
 
-lambda :: Parser Expr
-lambda = do
+introduce :: Parser Expr
+introduce = do
   s <- char '(' *> sym
   t <- char ':' *> opExpr
-  e <- char ')' *> spaces *> string "->" *> opExpr
-  return $ (s, t) :-> e
+  let
+    lambda = do
+      e <- char ')' *> spaces *> string "->" *> opExpr
+      return $ (s, t) :-> e
+    intersection = do
+      t2 <- string "/\\" *> opExpr <* char ')'
+      return $ (s, t) :/\ t2
+  lambda <|> intersection
 
 symbol :: Parser Expr
 symbol = S <$> sym
@@ -74,13 +80,14 @@ comments = many (comment <* spaces)
 expr :: Parser Expr
 expr = ps
     where
-      p = erased <|> named <|> special <|> lambda <|> symbol <|> parens
+      p = erased <|> named <|> special <|> introduce <|> symbol <|> parens
       ps = spaces *> comments *> p <* spaces <* comments
 
 opExpr :: Parser Expr
-opExpr = opType . opApp $ expr -- The priority of opperator is higher to the right. Currently opApp has the highest priority
+opExpr = opType . opIntersect . opApp $ expr -- The priority of opperator is higher to the right. Currently opApp has the highest priority
     where
       opApp = associate ALeft "" (:@)
+      opIntersect = associate ARight "^" (:^)
       opType = associate ANone ":>" (::>)
 
 data Associate = ALeft | ARight | ANone

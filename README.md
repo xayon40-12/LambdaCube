@@ -105,11 +105,11 @@ See files with `.lam3` extension in the [math](math/) folder.
 The symbol '???' is used when a proof is not finished to be written. It is not valid in the language but just used here for unfinished work.
 #### Nat
 ```
-@Nat = (i: #L) -> (n: CNat i /\ INat n i);
-@Zero = Nat :> (i: #L) -> CZero i ^ IZero i;
-@Succ = (n: Nat) -> Nat :> [CSucc (n i).1] ^ [ISucc n.1 n.2];
+@Nat = (n: CNat /\ INat n);
+@Zero = Nat :> CZero ^ IZero;
+@Succ = (n: Nat) -> Nat :> [CSucc n.1] ^ [ISucc n.1 n.2];
 
-@c2nat = (n: CNat) -> Nat :> (i: #L) -> n i Nat Succ Zero;
-@c2nat_reflection = (n: Nat) -> (i: #L) -> Equal i Nat (c2nat n.1) n :> ???;
-@Ind = (i: #L) -> (P: Nat -> #U i) -> (s: (n: Nat) -> (p: P n) -> P [Succ n]) -> (z: P Zero) -> (n: Nat) -> P n :> ???;
+@c2nat = (i: '#L) -> (n: CNat i) -> Nat :> n Nat Succ Zero;
+@c2nat_reflection = (n: Nat) -> (i: #L) -> Equal i Nat [c2nat n.1] n :> ???;
+@Ind = (i: '#L) -> (P: '(n: Nat) -> #U i) -> (s: (n: 'Nat) -> (p: P n) -> P [Succ n]) -> (z: P Zero) -> (n: Nat) -> P n :> ???;
 ```

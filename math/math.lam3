@@ -34,9 +34,15 @@
 -- Nat
 @CNat = (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> '#U i :> P;
 @CZero = (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> z;
-@CSucc = (n: CNat) -> (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> s [n 'i 'P s z];
+@CSucc = (i: '#L) -> (n: CNat 'i) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> s [n 'P s z];
 
-@INat = (n: 'CNat) -> (i: '#L) -> (P: '(n: CNat) -> #U i) -> (s: (n: 'CNat) -> (p: P 'n) -> P '['CSucc 'n]) -> (z: P 'CZero) -> '#U i :> P 'n;
-@IZero = (i: #L) -> (P: '(n: CNat) -> #U i) -> (s: (n: 'CNat) -> (p: P 'n) -> P '['CSucc 'n]) -> (z: P 'CZero) -> INat 'CZero 'i 'P s z :> z;
-@ISucc = (n: 'CNat) -> (in: INat 'n) -> (i: '#L) -> (P: '(n: CNat) -> #U i) -> (s: (n: 'CNat) -> (p: P 'n) -> P '['CSucc 'n]) -> (z: P 'CZero) -> INat '['CSucc 'n] 'i 'P s z :> s 'n [in 'i 'P s z];
+@INat = (i: '#L) -> (n: '[CNat 'i]) -> (P: '(n: [CNat 'i]) -> #U i) -> (s: (n: '[CNat 'i]) -> (p: P 'n) -> P '['[CSucc 'i] 'n]) -> (z: P '[CZero 'i]) -> '#U i :> P 'n;
+@IZero = (i: '#L) -> (P: '(n: [CNat 'i]) -> #U i) -> (s: (n: '[CNat 'i]) -> (p: P 'n) -> P '['[CSucc 'i] 'n]) -> (z: P '[CZero 'i]) -> INat 'i '[CZero 'i] 'P s z :> z;
+@ISucc = (i: '#L) -> (n: '[CNat 'i]) -> (in: INat 'i 'n) -> (P: '(n: CNat 'i) -> #U i) -> (s: (n: '[CNat 'i]) -> (p: P 'n) -> P '['[CSucc 'i] 'n]) -> (z: P '[CZero 'i]) -> INat 'i '['[CSucc 'i] 'n] 'P s z :> s 'n [in 'P s z];
 
+@Nat = (i: '#L) -> (n: CNat 'i /\ INat 'i 'n);
+@IdNat = (n: Nat) -> Nat :> n;
+@Zero = (i: '#L) -> Nat 'i :> CZero 'i ^ IZero 'i;
+-- @Succ = [(n: Nat) -> Nat] :> (n: Nat) -> CSucc n.1 ^ ISucc n.1 n.2;
+@c2nat = (i: '#L) -> (c: CNat '#i+1) -> c '[Nat 'i];
+-- @c2nat = (i: '#L) -> (c: CNat '#i+1) -> Nat 'i :> c '[Nat 'i] Succ Zero;
