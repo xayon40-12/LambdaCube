@@ -7,6 +7,7 @@ This is my attempt to do a dependently type programming language. It is inspired
 
 **Table of contents:**
 - [Grammar](#Grammar)
+- [Erasure](#erasure)
 - [Cumulative Universes](#Cumulative-Universes)
   - [Level](Level)
 - [Dependent intersection](#Dependent-intersection)
@@ -54,6 +55,17 @@ Each line in order correspond to:
 - parens to force a particular association order
 - type conversion of a value between two beta-equivalent types
 - an erased expression (can be used for the type in a lambda)
+
+## Erasure
+The erasure correpsond to the computation part of an expression. For instance, the identity is the function that returns its input unchanged. However, in the formalism proporsed here, additional components are needed to preperly type the identity function:
+```
+(i: '#L) -> (T: '#U i) -> (t: T) -> T :> t
+```
+a level `i` and a generic type `T` are needed to type the identity function. They are therefor marked as erased with `'`. Erasing this expression will remove all symbols marked as erased and will strip all the remaning symbols of their types. After erasure, the above identity function becomes:
+```
+t -> t
+```
+which is the identity function in untyped lambda calculus.
 
 ## Cumulative Universes
 A universe is a type of type indexed by a level. For a level `l`, the corresponding universe is denoted by `U l`.
