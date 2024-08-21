@@ -4,7 +4,7 @@ module Parser (parse, parseShow, parseExamples) where
 import Text.Parsec.String
 import Text.Parsec.Char
 import Text.Parsec hiding (parse)
-import Lib (Sym, Expr (..), Levels, showLam)
+import Lib (Sym, Expr (..), Levels, showLam, Inter (..))
 import Data.Functor
 import Data.Map.Strict (fromList)
 import qualified Text.Parsec as P
@@ -84,13 +84,19 @@ expr = ps
       ps = spaces *> comments *> p <* spaces <* comments
 
 opExpr :: Parser Expr
-opExpr = opType . opIntersect . opApp $ expr -- The priority of opperator is higher to the right. Currently opApp has the highest priority
+opExpr = opType . opIntersect . opApp . postInter $ expr -- The priority of opperator is higher to the right. Currently opApp has the highest priority
     where
+      postInter= post ".1" (`I` One) . post ".2" (`I` Two)
       opApp = associate ALeft "" (:@)
       opIntersect = associate ARight "^" (:^)
       opType = associate ANone ":>" (::>)
 
 data Associate = ALeft | ARight | ANone
+
+post :: String -> (Expr -> Expr) -> Parser Expr -> Parser Expr
+post s op p = do
+  e <- p
+  (try (string s) $> op e) <|> return e
 
 associate :: Associate -> String -> (Expr -> Expr -> Expr) -> Parser Expr -> Parser Expr
 associate a n op p = do

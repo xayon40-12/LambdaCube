@@ -14,6 +14,7 @@ import Data.Function (id)
 
 type Sym = String
 type Levels = Map Sym Int
+data Inter = One | Two deriving Eq
 type Type = Expr
 data Expr
     = L -- Type for unvirse level
@@ -23,17 +24,20 @@ data Expr
     | Expr :@ Expr -- Application
     | (Sym, Expr) :/\ Expr -- Depedent intersection type
     | Expr :^ Expr -- Dependent intersection term
-    -- | I1 Expr -- Term of the dependent intersection with first type
-    -- | I2 Expr -- Term of the dependent intersection with second type
+    | I Expr Inter -- Term of a dependent intersection with either the first or second type depending on the value of `Inter`
     | Type ::> Expr -- Left typing: Type ::> term
     | E Sym Expr Expr
     | S Sym -- Symbol
     | Erased Expr
-    deriving (Eq, Read)
+    deriving Eq
 infixr 2 :->
 infixl 7 :@
 infix 6 ::>
 infix 8 :+
+
+instance Show Inter where
+    show One = "1"
+    show Two = "2"
 
 instance Show Expr where
     show L = "#L"
@@ -50,6 +54,7 @@ instance Show Expr where
     show (t ::> e) = show t ++ " :> " ++ show e
     show ((s, t1) :/\ t2) = s ++ ": " ++ show t1 ++ " /\\ " ++ show t2
     show (e1 :^ e2) = show e1 ++ " ^ " ++ show e2
+    show (I e i) = show e ++ "." ++ show i
     show (E s v e) = "@" ++ s ++ " = " ++ show v ++ "; " ++ show e
     show (S s) = s
     show (Erased e) = "'" ++ show e
@@ -80,6 +85,7 @@ freeVars ((s, t) :-> e) = freeVars t <> Set.delete s (freeVars e)
 freeVars (f :@ a) = freeVars f <> freeVars a
 freeVars ((s, t1) :/\ t2) = freeVars t1 <> Set.delete s (freeVars t2)
 freeVars (e1 :^ e2) = freeVars e1 <> freeVars e2
+freeVars (I e _i) = freeVars e
 freeVars (t ::> e) = freeVars t <> freeVars e
 freeVars (E s v e) = freeVars v <> Set.delete s (freeVars e)
 freeVars (S s) = Set.singleton s
@@ -94,6 +100,7 @@ nf expr = spine expr []
         spine (f :@ x) xs = spine f (x:xs)
         spine ((s, t1) :/\ t2) [] = (s, nf t1) :/\ nf t2
         spine (e1 :^ e2) [] = nf e1 :^ nf e2
+        spine (I e i) [] = I (nf e) i
         spine (t ::> e) [] = nf t ::> nf e
         spine (E s v e) xs = spine (subst s v (nf e)) xs
         spine (Erased e) [] = Erased (nf e)
@@ -144,6 +151,7 @@ subst s x = sub
             in (s'', sub t1) :/\ sub e''
           | otherwise = (s', sub t1) :/\ sub t2
         sub (e1 :^ e2) = sub e1 :^ sub e2
+        sub (I e i) = I (sub e) i
         sub (t ::> e) = sub t ::> sub e
         sub (E s' v e')
           | s == s' = E s' (sub v) e'
@@ -174,6 +182,7 @@ alphaEq ((s, t) :-> e) ((s', t') :-> e') = alphaEq e (substVar s' s e') && alpha
 alphaEq (f :@ x) (f' :@ x') = alphaEq f f' && alphaEq x x'
 alphaEq ((s, t1) :/\ t2) ((s', t1') :/\ t2') = alphaEq t2 (substVar s' s t2') && alphaEq t1 t1'
 alphaEq (e1 :^ e2) (e1' :^ e2') = alphaEq e1 e1' && alphaEq e2 e2'
+alphaEq (I e i) (I e' i') = alphaEq e e' && i == i'
 alphaEq (t ::> e) (t' ::> e') = alphaEq e e' && alphaEq t t'
 alphaEq (E s v e) e' = alphaEq (subst s v e) e'
 alphaEq e (E s v e') = alphaEq e (subst s v e')
@@ -203,6 +212,7 @@ erased (f :@ (Erased _)) = erased f
 erased (f :@ x) = erased f :@ erased x
 erased ((s, t1) :/\ t2) = (s, erased t1) :/\ erased t2
 erased (e1 :^ _e2) = erased e1
+erased (I e _i) = erased e
 erased (_t ::> e) = erased e
 -- erased (E s v e) = E s (erased v) (erased e)
 erased (E s v e) = erased $ subst s v e
@@ -248,6 +258,7 @@ validTyping env vt1 vt2 ve2 = valid (nf vt1) (nf vt2)
             e1 :^ _e2 -> valid (subst s e1 t2) t2' && valid t1 t1'
             _ -> valid t2 (substVar s' s t2') && valid t1 t1'
         valid (e1 :^ e2) (e1' :^ e2') = valid e1 e1' && valid e2 e2'
+        valid (I e i) (I e' i') = valid e e' && i == i'
         valid e (_t' ::> e') = valid e e'
         valid (_t ::> e) e' = valid e e'
         valid (E s v e) e' = valid (subst s v e) e'
@@ -273,6 +284,7 @@ universe env (e1 :^ e2) = do
     u1 <- universe env e1
     u2 <- universe env e2
     return $ maxLevel u1 u2
+universe env (I e _i) = universe env e
 universe env (_ ::> e) = universe env e
 universe env (E s v e) = universe env (subst s v e)
 universe env (S s) = findVar env s >>= ((((+(-1)) <$>) <$>) . universe env) . snd
@@ -309,6 +321,15 @@ tCheck env ((s, t) :-> e) = do
             let env' = extend env s t
             (isT', te) <- tCheck env' e
             return (maxLevel l <$> isT', (s, t) :-> te)
+tCheck env (f :@ x) = do
+    (isT, tf) <- tCheck env f
+    (_isT', tx) <- tCheck env x
+    case propagateErase . unTyped . whnf $ tf of
+        (s, t) :-> b -> do
+            unless (sameErasure t x) $ throwError $ "In application the erasure must match and be specified manually, erasure of \"" ++ show t ++ "\" and \"" ++ show x ++ "\" differ"
+            unless (validTyping env t tx x) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ": U " ++ show (universe env t) ++ ",\n" ++ show (nf tx) ++ ": U " ++ show (universe env tx) ++ "\nin " ++ show (f :@ x) ++ "."
+            return (isT, subst s (unErase x) b)
+        e -> throwError $ "Non-function in application (" ++ show (f :@ x) ++ "): " ++ show e ++ "."
 tCheck env ((s, t1) :/\ t2) = do
     (isT, tt1) <- tCheck env t1
     case isT of
@@ -322,15 +343,7 @@ tCheck env (e1 :^ e2) = do
     (isT1, t1) <- tCheck env e1
     (isT2, t2) <- tCheck env e2
     return (maxLevel <$> isT1 <*> isT2, ("", t1) :/\ t2)
-tCheck env (f :@ x) = do
-    (isT, tf) <- tCheck env f
-    (_isT', tx) <- tCheck env x
-    case propagateErase . unTyped . whnf $ tf of
-        (s, t) :-> b -> do
-            unless (sameErasure t x) $ throwError $ "In application the erasure must match and be specified manually, erasure of \"" ++ show t ++ "\" and \"" ++ show x ++ "\" differ"
-            unless (validTyping env t tx x) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ": U " ++ show (universe env t) ++ ",\n" ++ show (nf tx) ++ ": U " ++ show (universe env tx) ++ "\nin " ++ show (f :@ x) ++ "."
-            return (isT, subst s (unErase x) b)
-        e -> throwError $ "Non-function in application (" ++ show (f :@ x) ++ "): " ++ show e ++ "."
+tCheck env (I e i) = throwError "Accessing elements of intersection is not implemented yet"
 tCheck env (t ::> e) = do
     _ <- tCheck env t
     (isT, te) <- tCheck env e
