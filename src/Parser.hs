@@ -8,6 +8,7 @@ import Lib (Sym, Expr (..), Levels, showLam, Inter (..))
 import Data.Functor
 import Data.Map.Strict (fromList)
 import qualified Text.Parsec as P
+import Data.Foldable (foldl')
 
 validSym :: Parser Char
 validSym = alphaNum
@@ -77,19 +78,25 @@ comment = end <|> inner
 comments :: Parser [String]
 comments = many (comment <* spaces)
 
+surroundCommentSpaces :: Parser Expr -> Parser Expr
+surroundCommentSpaces p = spaces *> comments *> p <* spaces <* comments
+
+baseExpr :: Parser Expr
+baseExpr = erased <|> named <|> special <|> introduce <|> symbol <|> parens
+
 expr :: Parser Expr
-expr = ps
-    where
-      p = erased <|> named <|> special <|> introduce <|> symbol <|> parens
-      ps = spaces *> comments *> p <* spaces <* comments
+expr = foldl' (.) surroundCommentSpaces posts baseExpr
+  where
+    postInter = post ".1" (`I` One) . post ".2" (`I` Two)
+    posts = [postInter]
 
 opExpr :: Parser Expr
-opExpr = opType . opIntersect . opApp . postInter $ expr -- The priority of opperator is higher to the right. Currently opApp has the highest priority
+opExpr = foldl' (.) id ops expr
     where
-      postInter= post ".1" (`I` One) . post ".2" (`I` Two)
       opApp = associate ALeft "" (:@)
       opIntersect = associate ARight "^" (:^)
       opType = associate ANone ":>" (::>)
+      ops = [opType, opIntersect, opApp]
 
 data Associate = ALeft | ARight | ANone
 
