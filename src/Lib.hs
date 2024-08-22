@@ -102,8 +102,9 @@ nf expr = spine expr []
         spine (e1 :^ e2) [] = nf e1 :^ nf e2
         spine (I e i) [] = I (nf e) i
         spine (t ::> e) [] = nf t ::> nf e
-        spine (E s v e) xs = spine (subst s v (nf e)) xs
+        spine (E s v e) xs = spine (subst s v e) xs
         spine (Erased e) [] = Erased (nf e)
+        spine (Erased e) xs = Erased (spine e xs)
         spine f xs = app f xs
         app f xs = foldl (:@) f (map nf xs)
 whnf :: Expr -> Expr
@@ -343,11 +344,17 @@ tCheck env (e1 :^ e2) = do
     (isT1, t1) <- tCheck env e1
     (isT2, t2) <- tCheck env e2
     return (maxLevel <$> isT1 <*> isT2, ("", t1) :/\ t2)
-tCheck env (I e i) = throwError "Accessing elements of intersection is not implemented yet"
+tCheck env (I e i) = do
+    (isT, te) <- tCheck env e
+    case te of
+        ((s, t1) :/\ t2) -> case i of 
+            One -> return (isT, t1)
+            Two -> return (isT, subst s (I e One) t2)
+        t -> throwError $ "The post-fix operator to access a dependent intersection must be applied to a term whose type is a dependent intersection, provided:\n" ++ show (I e i) ++ ": " ++ show t
 tCheck env (t ::> e) = do
     _ <- tCheck env t
     (isT, te) <- tCheck env e
-    unless (validTyping env t te e) $ throwError $ "Type missmatch:\n" ++ show (nf t) ++ ",\n" ++ show (nf te) ++ "\nin " ++ show (t ::> e) ++ "."
+    unless (validTyping env t te e) $ throwError $ "Type missmatch:\n" ++ show (nf t) ++ ",\n" ++ show (nf te) ++ "\n." --"in " ++ show (t ::> e) ++ "."
     return (isT, t)
 tCheck env (E s v e) = tCheck env v *> tCheck env (subst s v e)
 tCheck env (S s) = findVar env s
