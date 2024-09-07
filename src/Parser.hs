@@ -14,17 +14,17 @@ type Pos = (Line, Column)
 data Info = Info {
     infoName :: String,
     infoStart :: Pos,
-    infoLocation :: Pos,
     infoEnd :: Pos
 } deriving Show
 
-info :: SourcePos -> SourcePos -> SourcePos -> Info
-info s l e = Info file s' l' e'
+info :: SourcePos -> Parser Info
+info s = do
+  e <- getPosition
+  let e' = (sourceLine e, sourceColumn e)
+  return $ Info file s' e'
   where
-    file = sourceName l
+    file = sourceName s
     s' = (sourceLine s, sourceColumn s)
-    l' = (sourceLine l, sourceColumn l)
-    e' = (sourceLine e, sourceColumn e)
 
 validSym :: Parser Char
 validSym = alphaNum
@@ -69,11 +69,8 @@ introduce = do
   t <- char ':' *> expr
   let
     lambda = do
-      _ <- char ')' *> spaces
-      plocation <- getPosition
-      e <- string "->" *> expr
-      pend <- getPosition
-      let i = info pstart plocation pend
+      e <- char ')' *> spaces *> string "->" *> expr
+      i <- info pstart
       return $ Lam i (s, t) e
     intersection = do
       t2 <- string "/\\" *> expr <* char ')'
@@ -124,12 +121,12 @@ expr = opExpr
 
 data Associate = ALeft | ARight | ANone
 
-post :: String -> ((Expr Info) -> (Expr Info)) -> Parser (Expr Info) -> Parser (Expr Info)
+post :: String -> (Expr Info -> Expr Info) -> Parser (Expr Info) -> Parser (Expr Info)
 post s op p = do
   e <- p
   (try (string s) $> op e) <|> return e
 
-associate :: Associate -> String -> ((Expr Info) -> (Expr Info) -> (Expr Info)) -> Parser (Expr Info) -> Parser (Expr Info)
+associate :: Associate -> String -> (Expr Info -> Expr Info -> Expr Info) -> Parser (Expr Info) -> Parser (Expr Info)
 associate a n op p = do
   l <- p
   r <- many (string n *> p)
@@ -141,11 +138,11 @@ associate a n op p = do
     go ALeft f (x:xs) = go ALeft (f `op` x) xs
     go ARight f (x:xs) = op f <$> go ARight x xs
 
-parse :: String -> Either ParseError (Expr Info)
-parse = P.parse (expr <* eof) ""
+parse :: String -> String -> Either ParseError (Expr Info)
+parse = P.parse (expr <* eof)
 
 parseShow :: Sym -> String -> IO ()
-parseShow s e = case parse e of
+parseShow s e = case parse s e of
   Right e' -> showLam s e'
   Left err -> putStrLn $ s ++ ": " ++ show err
 

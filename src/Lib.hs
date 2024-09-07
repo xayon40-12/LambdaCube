@@ -238,7 +238,7 @@ throwError = Left
 findVar :: Show i => Env i -> Sym -> TC (Status, Expr i)
 findVar (Env ls) s =
     case Map.lookup s ls of
-        Just t -> (\(s, e) -> (downgrade s ,nf t)) <$> tCheck (Env ls) t
+        Just t -> (\(s', _e) -> (downgrade s' ,nf t)) <$> tCheck (Env ls) t
         Nothing -> throwError $ "Cannot find variable " ++ s
 
 unTyped :: Expr i  -> Expr i
@@ -334,7 +334,7 @@ tCheck env (App f x) = do
     (isT, tf) <- tCheck env f
     (_isT', tx) <- tCheck env x
     case propagateErase . unTyped . whnf $ tf of
-        Lam i (s, t) b -> do
+        Lam _i (s, t) b -> do
             unless (sameErasure t x) $ throwError $ "In application the erasure must match and be specified manually, erasure of \"" ++ show t ++ "\" and \"" ++ show x ++ "\" differ"
             unless (validTyping env t tx x) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ": U " ++ show (universe env t) ++ ",\n" ++ show (nf tx) ++ ": U " ++ show (universe env tx) ++ "\nin " ++ show (App f x) ++ "."
             return (isT, subst s (unErase x) b)
