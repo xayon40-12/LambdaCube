@@ -10,6 +10,22 @@ import Data.Map.Strict (fromList)
 import qualified Text.Parsec as P
 import Data.Foldable (foldl')
 
+type Pos = (Line, Column)
+data Info = Info {
+    infoName :: String,
+    infoStart :: Pos,
+    infoLocation :: Pos,
+    infoEnd :: Pos
+} deriving Show
+
+info :: SourcePos -> SourcePos -> SourcePos -> Info
+info s l e = Info file s' l' e'
+  where
+    file = sourceName l
+    s' = (sourceLine s, sourceColumn s)
+    l' = (sourceLine l, sourceColumn l)
+    e' = (sourceLine e, sourceColumn e)
+
 validSym :: Parser Char
 validSym = alphaNum
 
@@ -19,16 +35,16 @@ sym = do
   ls <- many validSym
   return $ l:ls
 
-named :: Parser Expr
+named :: Parser (Expr Info)
 named = do
   s <- char '@' *> sym <* spaces <* char '='
   v <- expr <* char ';' <* spaces <* comments
   (Let s v <$> expr) <|> return v
 
-special :: Parser Expr
+special :: Parser (Expr Info)
 special = char '#' *> (levelT <|> universe <|> level)
 
-levelT :: Parser Expr
+levelT :: Parser (Expr Info)
 levelT = char 'L' $> LevelT
 
 lv :: Parser (Sym, Int)
@@ -37,35 +53,40 @@ lv = do
   i <- read <$> many1 digit
   return (s, i)
 
-level :: Parser Expr
+level :: Parser (Expr Info)
 level = uncurry Level <$> lv
 
 levels :: Parser Levels
 levels = fromList <$> sepBy1 (try lv <|> ((,0) <$> sym)) (char ',')
 
-universe :: Parser Expr
+universe :: Parser (Expr Info)
 universe = Universe <$> (char 'U' *> space *> levels)
 
-introduce :: Parser Expr
+introduce :: Parser (Expr Info)
 introduce = do
+  pstart <- getPosition
   s <- char '(' *> sym
   t <- char ':' *> expr
   let
     lambda = do
-      e <- char ')' *> spaces *> string "->" *> expr
-      return $ Lam (s, t) e
+      _ <- char ')' *> spaces
+      plocation <- getPosition
+      e <- string "->" *> expr
+      pend <- getPosition
+      let i = info pstart plocation pend
+      return $ Lam i (s, t) e
     intersection = do
       t2 <- string "/\\" *> expr <* char ')'
       return $ InterT (s, t) t2
   lambda <|> intersection
 
-symbol :: Parser Expr
+symbol :: Parser (Expr Info)
 symbol = Symbol <$> sym
 
-erased :: Parser Expr
+erased :: Parser (Expr Info)
 erased = char '\'' *> (Erased <$> postExpr)
 
-parens :: Parser Expr
+parens :: Parser (Expr Info)
 parens = char '[' *> expr <* char ']'
 
 comment :: Parser String
@@ -78,19 +99,19 @@ comment = end <|> inner
 comments :: Parser [String]
 comments = many (comment <* spaces)
 
-surroundCommentSpaces :: Parser Expr -> Parser Expr
+surroundCommentSpaces :: Parser (Expr Info) -> Parser (Expr Info)
 surroundCommentSpaces p = spaces *> comments *> p <* spaces <* comments
 
-baseExpr :: Parser Expr
+baseExpr :: Parser (Expr Info)
 baseExpr = erased <|> named <|> special <|> introduce <|> symbol <|> parens
 
-postExpr :: Parser Expr
+postExpr :: Parser (Expr Info)
 postExpr = foldl' (.) surroundCommentSpaces posts baseExpr
   where
     postInter = post ".1" (`As` One) . post ".2" (`As` Two)
     posts = [postInter]
 
-opExpr :: Parser Expr
+opExpr :: Parser (Expr Info)
 opExpr = foldl' (.) id ops postExpr
     where
       opApp = associate ALeft "" App
@@ -98,17 +119,17 @@ opExpr = foldl' (.) id ops postExpr
       opType = associate ANone ":>" Typed
       ops = [opType, opIntersect, opApp]
 
-expr :: Parser Expr
+expr :: Parser (Expr Info)
 expr = opExpr
 
 data Associate = ALeft | ARight | ANone
 
-post :: String -> (Expr -> Expr) -> Parser Expr -> Parser Expr
+post :: String -> ((Expr Info) -> (Expr Info)) -> Parser (Expr Info) -> Parser (Expr Info)
 post s op p = do
   e <- p
   (try (string s) $> op e) <|> return e
 
-associate :: Associate -> String -> (Expr -> Expr -> Expr) -> Parser Expr -> Parser Expr
+associate :: Associate -> String -> ((Expr Info) -> (Expr Info) -> (Expr Info)) -> Parser (Expr Info) -> Parser (Expr Info)
 associate a n op p = do
   l <- p
   r <- many (string n *> p)
@@ -120,7 +141,7 @@ associate a n op p = do
     go ALeft f (x:xs) = go ALeft (f `op` x) xs
     go ARight f (x:xs) = op f <$> go ARight x xs
 
-parse :: String -> Either ParseError Expr
+parse :: String -> Either ParseError (Expr Info)
 parse = P.parse (expr <* eof) ""
 
 parseShow :: Sym -> String -> IO ()
