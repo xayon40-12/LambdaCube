@@ -4,7 +4,7 @@ module Parser (parse, parseShow, parseExamples) where
 import Text.Parsec.String
 import Text.Parsec.Char
 import Text.Parsec hiding (parse)
-import Lib (Sym, Expr (..), Levels, showLam, Inter (..))
+import Lib (Sym, Expr (..), Levels, showLam, AsT (..))
 import Data.Functor
 import Data.Map.Strict (fromList)
 import qualified Text.Parsec as P
@@ -22,14 +22,14 @@ sym = do
 named :: Parser Expr
 named = do
   s <- char '@' *> sym <* spaces <* char '='
-  v <- opExpr <* char ';' <* spaces <* comments
-  (E s v <$> opExpr) <|> return v
+  v <- expr <* char ';' <* spaces <* comments
+  (Let s v <$> expr) <|> return v
 
 special :: Parser Expr
 special = char '#' *> (levelT <|> universe <|> level)
 
 levelT :: Parser Expr
-levelT = char 'L' $> L
+levelT = char 'L' $> LevelT
 
 lv :: Parser (Sym, Int)
 lv = do
@@ -38,35 +38,35 @@ lv = do
   return (s, i)
 
 level :: Parser Expr
-level = uncurry (:+) <$> lv
+level = uncurry Level <$> lv
 
 levels :: Parser Levels
 levels = fromList <$> sepBy1 (try lv <|> ((,0) <$> sym)) (char ',')
 
 universe :: Parser Expr
-universe = U <$> (char 'U' *> space *> levels)
+universe = Universe <$> (char 'U' *> space *> levels)
 
 introduce :: Parser Expr
 introduce = do
   s <- char '(' *> sym
-  t <- char ':' *> opExpr
+  t <- char ':' *> expr
   let
     lambda = do
-      e <- char ')' *> spaces *> string "->" *> opExpr
-      return $ (s, t) :-> e
+      e <- char ')' *> spaces *> string "->" *> expr
+      return $ Lam (s, t) e
     intersection = do
-      t2 <- string "/\\" *> opExpr <* char ')'
-      return $ (s, t) :/\ t2
+      t2 <- string "/\\" *> expr <* char ')'
+      return $ InterT (s, t) t2
   lambda <|> intersection
 
 symbol :: Parser Expr
-symbol = S <$> sym
+symbol = Symbol <$> sym
 
 erased :: Parser Expr
-erased = char '\'' *> (Erased <$> expr)
+erased = char '\'' *> (Erased <$> postExpr)
 
 parens :: Parser Expr
-parens = char '[' *> opExpr <* char ']'
+parens = char '[' *> expr <* char ']'
 
 comment :: Parser String
 comment = end <|> inner
@@ -84,19 +84,22 @@ surroundCommentSpaces p = spaces *> comments *> p <* spaces <* comments
 baseExpr :: Parser Expr
 baseExpr = erased <|> named <|> special <|> introduce <|> symbol <|> parens
 
-expr :: Parser Expr
-expr = foldl' (.) surroundCommentSpaces posts baseExpr
+postExpr :: Parser Expr
+postExpr = foldl' (.) surroundCommentSpaces posts baseExpr
   where
-    postInter = post ".1" (`I` One) . post ".2" (`I` Two)
+    postInter = post ".1" (`As` One) . post ".2" (`As` Two)
     posts = [postInter]
 
 opExpr :: Parser Expr
-opExpr = foldl' (.) id ops expr
+opExpr = foldl' (.) id ops postExpr
     where
-      opApp = associate ALeft "" (:@)
-      opIntersect = associate ARight "^" (:^)
-      opType = associate ANone ":>" (::>)
+      opApp = associate ALeft "" App
+      opIntersect = associate ARight "^" Inter
+      opType = associate ANone ":>" Typed
       ops = [opType, opIntersect, opApp]
+
+expr :: Parser Expr
+expr = opExpr
 
 data Associate = ALeft | ARight | ANone
 
@@ -118,7 +121,7 @@ associate a n op p = do
     go ARight f (x:xs) = op f <$> go ARight x xs
 
 parse :: String -> Either ParseError Expr
-parse = P.parse (opExpr <* eof) ""
+parse = P.parse (expr <* eof) ""
 
 parseShow :: Sym -> String -> IO ()
 parseShow s e = case parse e of
