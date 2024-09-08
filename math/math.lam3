@@ -42,6 +42,7 @@
 
 @Nat = (i: #L) '-> (n: CNat 'i /\ INat 'i 'n);
 @IdNat = (n: Nat) -> Nat :> n;
+-- @Zero = Nat :> (i: #L) '-> CZero 'i ^ IZero 'i;
 @Zero = (i: #L) '-> Nat 'i :> CZero 'i ^ IZero 'i;
 @Succ = (i: #L) '-> (n: Nat 'i) -> Nat 'i :> CSucc 'i n.1 ^ ISucc 'i 'n.1 n.2;
-@c2nat = (i: #L) '-> (c: CNat '#i+1) -> c '[Nat 'i] [Succ 'i];
+@c2nat = (i: #L) '-> (c: CNat '#i+1) -> Nat 'i :> c '[Nat 'i] [Succ 'i] [Zero 'i];

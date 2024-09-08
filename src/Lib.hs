@@ -34,7 +34,7 @@ app :: Expr i -> Expr i -> Expr i
 app f x = App f (False,x)
 
 app' :: Expr i -> Expr i -> Expr i
-app' f x = App f (True,x) 
+app' f x = App f (True,x)
 
 isSymbol :: Sym -> Expr i -> Bool
 isSymbol s (Symbol s') = s == s'
@@ -67,6 +67,7 @@ showErrasure True = "'"
 showErrasure False = ""
 
 showApp :: (Erased, Expr i) -> String
+showApp (er, l@(Lam {})) = showErrasure er ++ "[" ++ show l ++ "]"
 showApp (er, App f x) = showErrasure er ++ "[" ++ show f ++ " " ++ showApp x ++ "]"
 showApp (er, Typed t x) = showErrasure er ++ "[" ++ show t ++ " :> " ++ showApp (False, x) ++ "]"
 showApp (er,e) = showErrasure er ++ show e
