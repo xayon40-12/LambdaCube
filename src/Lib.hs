@@ -259,7 +259,7 @@ validTyping env vt1 vt2 ve2 = valid (nf vt1) (nf vt2)
         valid (Level s i) (Level s' i') = s == s' && i >= i'
         valid (Universe ls) (Universe ls') = universeValid ls ls'
         valid (Universe ls) e = either (const False) (universeValid ls) (universe env e)
-        valid (Lam _ (er, s, t) e) (Lam _ (er', s', t') e') = er == er' && valid e (substVar s' s e') && valid t t'
+        valid (Lam _ (er, s, t) e) (Lam _ (er', s', t') e') = er == er' && valid e (substVar s' s e') && valid t t' -- FIXME: in this case 've2' should be a Lam and its right expr should be provided to 'valid e (...)'
         valid (App f (er,x)) (App f' (er',x')) = er == er' && valid f f' && valid x x'
         valid (InterT (s, t1) t2) (InterT (s', t1') t2') = case nf ve2 of
             Inter e1 _e2 -> valid (subst s e1 t2) t2' && valid t1 t1'
