@@ -108,8 +108,8 @@ nf expr = spine expr []
         spine (As e i) [] = As (nf e) i
         spine (Typed t e) [] = Typed (nf t) (nf e)
         spine (Let s v e) xs = spine (subst s v e) xs
-        spine f xs = app f xs
-        app f xs = foldl App f (map (second nf) xs)
+        spine f xs = fapp f xs
+        fapp f xs = foldl App f (map (second nf) xs)
 whnf :: Expr i -> Expr i
 whnf expr = spine expr []
     where
@@ -117,8 +117,8 @@ whnf expr = spine expr []
         spine (App f x) xs = spine f (x:xs)
         spine (Typed t e) [] = Typed (whnf t) (whnf e)
         spine (Let s v e) xs = spine (subst s v (whnf e)) xs
-        spine f xs = app f xs
-        app f xs = foldl App f (map (second whnf) xs)
+        spine f xs = fapp f xs
+        fapp f xs = foldl App f (map (second whnf) xs)
 
 subst :: Sym -> Expr i -> Expr i -> Expr i
 subst "" _x = id -- if the symbol is empty, no substitution is done
