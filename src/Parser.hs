@@ -112,11 +112,10 @@ postExpr = foldl' (.) surroundCommentSpaces posts baseExpr
 opExpr :: Parser (Expr Info)
 opExpr = foldl' (.) id ops postExpr
     where
-      opApp = associate ALeft "" app
-      opApp' = associate ALeft "'" app'
-      opIntersect = associate ARight "^" Inter
-      opType = associate ANone ":>" Typed
-      ops = [opType, opIntersect, opApp, opApp']
+      opApp = associate ALeft [("", app), ("'", app')]
+      opIntersect = associate ARight [("^", Inter)]
+      opType = associate ANone [(":>", Typed)]
+      ops = [opType, opIntersect, opApp]
 
 expr :: Parser (Expr Info)
 expr = opExpr
@@ -128,17 +127,19 @@ post s op p = do
   e <- p
   (try (string s) $> op e) <|> return e
 
-associate :: Associate -> String -> (Expr Info -> Expr Info -> Expr Info) -> Parser (Expr Info) -> Parser (Expr Info)
-associate a n op p = do
+associate :: Associate -> [(String, Expr Info -> Expr Info -> Expr Info)] -> Parser (Expr Info) -> Parser (Expr Info)
+associate a nops p = do
   l <- p
-  r <- many (string n *> p)
+  r <- many (things nops)
   go a l r
   where
+    things [] = unexpected ""
+    things ((n,op):nops') = (try (string n) *> p <&> (op,)) <|> things nops'
     go _ f [] = return f
-    go _ f [x] = return  $ f `op` x
-    go ANone _f _xs = unexpected $ "operator \"" ++ n ++ "\" is not associative."
-    go ALeft f (x:xs) = go ALeft (f `op` x) xs
-    go ARight f (x:xs) = op f <$> go ARight x xs
+    go _ f [(op,x)] = return  $ f `op` x
+    go ANone _f _xs = unexpected $ "operators \"" ++ show (fst <$> nops) ++ "\" are not associative."
+    go ALeft f ((op,x):xs) = go ALeft (f `op` x) xs
+    go ARight f ((op,x):xs) = op f <$> go ARight x xs
 
 parse :: String -> String -> Either ParseError (Expr Info)
 parse = P.parse (expr <* eof)

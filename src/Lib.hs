@@ -116,6 +116,7 @@ nf expr = spine expr []
         spine (Inter e1 e2) [] = Inter (nf e1) (nf e2)
         spine (As e i) [] = As (nf e) i
         spine (Typed t e) [] = Typed (nf t) (nf e)
+        spine (Typed _t e) xs = spine (nf e) xs -- WARNING: because of this, applying 'nf' before 'tCheck' will discard some type constraints
         spine (Let s v e) xs = spine (subst s v e) xs
         spine f xs = fapp f xs
         fapp f xs = foldl App f (map (second nf) xs)
@@ -308,7 +309,9 @@ tCheck env _cer (Level s _i) = do
     case v of
         (isT, _er, LevelT) -> return (isT, LevelT)
         t -> throwError $ "The symbol in a level expression must be a \"#l\", found \"" ++ show t ++ "\""
-tCheck _ _cer (Universe ls) = let l = (+1) <$> ls in return (SUniverse, Universe l)
+tCheck _ _cer (Universe ls) = do
+    -- FIXME should check that all the symbols in ls are in the environement and are of type #L
+    let l = (+1) <$> ls in return (SUniverse, Universe l)
 tCheck env cer (Lam i (er, s, t) e) = do
     (isT, tt) <- tCheck env True t
     case isT of
