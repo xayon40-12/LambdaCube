@@ -15,20 +15,26 @@ type Sym = String
 type Levels = Map Sym Int
 data AsT = One | Two deriving Eq
 type Type i = Expr i
+type Erased = Bool
 data Expr i
     = LevelT -- Type for unvirse level
     | Level Sym Int -- Constructor of a level
     | Universe Levels -- Universe where the level is the max of each Sym+Int
-    | Lam i (Sym, Type i) (Expr i) -- Dependent lambda
-    | App (Expr i) (Expr i) -- Application
+    | Lam i (Erased, Sym, Type i) (Expr i) -- Dependent lambda
+    | App (Expr i) (Erased, Expr i) -- Application
     | InterT (Sym, Expr i) (Expr i) -- Depedent intersection type
     | Inter (Expr i) (Expr i) -- Dependent intersection term
     | As (Expr i) AsT -- Term of a dependent intersection with either the first or second type depending on the value of `Inter`
     | Typed (Type i) (Expr i) -- Left typing: Type :> term
     | Let Sym (Expr i) (Expr i)
     | Symbol Sym -- Symbol
-    | Erased (Expr i)
     deriving Eq
+
+app :: Expr i -> Expr i -> Expr i
+app f x = App f (False,x)
+
+app' :: Expr i -> Expr i -> Expr i
+app' f x = App f (True,x) 
 
 isSymbol :: Sym -> Expr i -> Bool
 isSymbol s (Symbol s') = s == s'
@@ -43,12 +49,11 @@ instance Show (Expr i) where
     show (Level s i) = s ++ "+" ++ show i
     show (Universe l) = "#U " ++ showL l
     -- show ((_s, Erased _t) :-> e) = show e
-    show (Lam _ (s, t) e)
-        | null s = show t ++ " -> " ++ show e
-        | isSymbol "" t = s ++ " -> " ++ show e
-        | otherwise = "(" ++ s ++ ": " ++ show t ++ ") -> " ++ show e
-    show (App f@(Lam _ (_, _) _) x) = "[" ++ show f ++ "] " ++ showApp x
-    -- show (f :@ Erased _x) = show f
+    show (Lam _ (er, s, t) e)
+        | null s = show t ++ " " ++ showErrasure er ++ "-> " ++ show e
+        | isSymbol "" t = s ++ " :" ++ showErrasure er ++ "-> " ++ show e
+        | otherwise = "(" ++ s ++ ": " ++ show t ++ ") " ++ showErrasure er ++ "-> " ++ show e
+    show (App f@(Lam _ (_, _, _) _) x) = "[" ++ show f ++ "] " ++ showApp x
     show (App f x) = show f ++ " " ++ showApp x
     show (Typed t e) = show t ++ " :> " ++ show e
     show (InterT (s, t1) t2) = s ++ ": " ++ show t1 ++ " /\\ " ++ show t2
@@ -56,12 +61,15 @@ instance Show (Expr i) where
     show (As e i) = show e ++ "." ++ show i
     show (Let s v e) = "@" ++ s ++ " = " ++ show v ++ "; " ++ show e
     show (Symbol s) = s
-    show (Erased e) = "'" ++ show e
 
-showApp :: Expr i -> String
-showApp (App f x) = "[" ++ show f ++ " " ++ showApp x ++ "]"
-showApp (Typed t x) = "[" ++ show t ++ " :> " ++ showApp x ++ "]"
-showApp e = show e
+showErrasure :: Erased -> String
+showErrasure True = "'"
+showErrasure False = ""
+
+showApp :: (Erased, Expr i) -> String
+showApp (er, App f x) = showErrasure er ++ "[" ++ show f ++ " " ++ showApp x ++ "]"
+showApp (er, Typed t x) = showErrasure er ++ "[" ++ show t ++ " :> " ++ showApp (False, x) ++ "]"
+showApp (er,e) = showErrasure er ++ show e
 
 showL :: Levels -> String
 showL m = showm (toList m)
@@ -80,43 +88,37 @@ freeVars :: Expr i -> Set Sym
 freeVars LevelT = Set.empty
 freeVars (Level s _) = Set.singleton s
 freeVars (Universe ls) = Set.fromList $ keys ls
-freeVars (Lam _ (s, t) e) = freeVars t <> Set.delete s (freeVars e)
-freeVars (App f a) = freeVars f <> freeVars a
+freeVars (Lam _ (_, s, t) e) = freeVars t <> Set.delete s (freeVars e)
+freeVars (App f (_, a)) = freeVars f <> freeVars a
 freeVars (InterT (s, t1) t2) = freeVars t1 <> Set.delete s (freeVars t2)
 freeVars (Inter e1 e2) = freeVars e1 <> freeVars e2
 freeVars (As e _i) = freeVars e
 freeVars (Typed t e) = freeVars t <> freeVars e
 freeVars (Let s v e) = freeVars v <> Set.delete s (freeVars e)
 freeVars (Symbol s) = Set.singleton s
-freeVars (Erased e) = freeVars e
 
 nf :: Expr i -> Expr i
 nf expr = spine expr []
     where
-        spine (Lam i (s, t) e) [] = Lam i (s, nf t) (nf e)
-        spine (Lam _ (s, _t) e) (Erased x:xs) = spine (subst s (unErase x) e) xs
-        spine (Lam _ (s, _t) e) (x:xs) = spine (subst s x e) xs
+        spine (Lam i (er, s, t) e) [] = Lam i (er, s, nf t) (nf e)
+        spine (Lam _ (_, s, _t) e) ((_,x):xs) = spine (subst s x e) xs
         spine (App f x) xs = spine f (x:xs)
         spine (InterT (s, t1) t2) [] = InterT (s, nf t1) (nf t2)
         spine (Inter e1 e2) [] = Inter (nf e1) (nf e2)
         spine (As e i) [] = As (nf e) i
         spine (Typed t e) [] = Typed (nf t) (nf e)
         spine (Let s v e) xs = spine (subst s v e) xs
-        spine (Erased e) [] = Erased (nf e)
-        spine (Erased e) xs = Erased (spine e xs)
         spine f xs = app f xs
-        app f xs = foldl App f (map nf xs)
+        app f xs = foldl App f (map (second nf) xs)
 whnf :: Expr i -> Expr i
 whnf expr = spine expr []
     where
-        spine (Lam _ (s, _t) e) (Erased x:xs) = spine (subst s (unErase x) e) xs
-        spine (Lam _ (s, _t) e) (x:xs) = spine (subst s x e) xs
+        spine (Lam _ (_, s, _t) e) ((_,x):xs) = spine (subst s x e) xs
         spine (App f x) xs = spine f (x:xs)
         spine (Typed t e) [] = Typed (whnf t) (whnf e)
         spine (Let s v e) xs = spine (subst s v (whnf e)) xs
-        spine (Erased e) [] = Erased (whnf e)
         spine f xs = app f xs
-        app f xs = foldl App f (map nf xs)
+        app f xs = foldl App f (map (second whnf) xs)
 
 subst :: Sym -> Expr i -> Expr i -> Expr i
 subst "" _x = id -- if the symbol is empty, no substitution is done
@@ -135,14 +137,14 @@ subst s x = sub
                 Just i -> Universe (insert s' (i+i') $ delete s ls)
                 Nothing -> ul
             _ -> ul
-        sub (Lam i (s', t') e')
-          | s == s' = Lam i (s', sub t') e'
+        sub (Lam i (er, s', t') e')
+          | s == s' = Lam i (er, s', sub t') e'
           | s' `elem` fsx =
             let s'' = newSym e' s'
                 e'' = substVar s' s'' e'
-            in Lam i (s'', sub t') (sub e'')
-          | otherwise = Lam i (s', sub t') (sub e')
-        sub (App f x') = App (sub f) (sub x')
+            in Lam i (er, s'', sub t') (sub e'')
+          | otherwise = Lam i (er, s', sub t') (sub e')
+        sub (App f (er,x')) = App (sub f) (er,sub x')
         sub (InterT (s', t1) t2)
           | s == s' = InterT (s', sub t1) t2
           | s' `elem` fsx =
@@ -161,7 +163,6 @@ subst s x = sub
             in Let s'' (sub v) (sub e'')
           | otherwise = Let s' (sub v) (sub e')
         sub v@(Symbol s') = if s == s' then x else v
-        sub (Erased e) =  Erased (sub e)
 
         fsx = freeVars x
         newSym e' s' = loop s'
@@ -178,8 +179,8 @@ alphaEq :: Expr i -> Expr i -> Bool
 alphaEq LevelT LevelT = True
 alphaEq (Level s i) (Level s' i') = s == s' && i == i'
 alphaEq (Universe ls) (Universe ls') = ls == ls'
-alphaEq (Lam _ (s, t) e) (Lam _ (s', t') e') = alphaEq e (substVar s' s e') && alphaEq t t'
-alphaEq (App f x) (App f' x') = alphaEq f f' && alphaEq x x'
+alphaEq (Lam _ (er, s, t) e) (Lam _ (er', s', t') e') = er == er' && alphaEq e (substVar s' s e') && alphaEq t t'
+alphaEq (App f (er,x)) (App f' (er',x')) = er == er' && alphaEq f f' && alphaEq x x'
 alphaEq (InterT (s, t1) t2) (InterT (s', t1') t2') = alphaEq t2 (substVar s' s t2') && alphaEq t1 t1'
 alphaEq (Inter e1 e2) (Inter e1' e2') = alphaEq e1 e1' && alphaEq e2 e2'
 alphaEq (As e i) (As e' i') = alphaEq e e' && i == i'
@@ -187,7 +188,6 @@ alphaEq (Typed t e) (Typed t' e') = alphaEq e e' && alphaEq t t'
 alphaEq (Let s v e) e' = alphaEq (subst s v e) e'
 alphaEq e (Let s v e') = alphaEq e (subst s v e')
 alphaEq (Symbol s) (Symbol s') = s == s'
-alphaEq (Erased e) (Erased e') = alphaEq e e'
 alphaEq _ _ = False
 
 -- first value correspond to the expected level, so the largest one in the case of cumulative universes
@@ -206,18 +206,16 @@ erased :: Expr i -> Expr i
 erased LevelT = LevelT
 erased (Level s i) = Level s i
 erased (Universe ls) = Universe ls
-erased (Lam _ (_, Erased _) e) = erased e
-erased (Lam i (s, _t) e) = Lam i (s, Symbol "") (erased e)
-erased (App f (Erased _)) = erased f
-erased (App f x) = App (erased f) (erased x)
+erased (Lam _i (True, _s, _t) e) = erased e
+erased (Lam i (False, s, _t) e) = Lam i (False, s, Symbol "") (erased e)
+erased (App f (True,_x)) = erased f
+erased (App f (False,x)) = App (erased f) (False,erased x)
 erased (InterT (s, t1) t2) = InterT (s, erased t1) (erased t2)
 erased (Inter e1 _e2) = erased e1
 erased (As e _i) = erased e
 erased (Typed _t e) = erased e
--- erased (E s v e) = E s (erased v) (erased e)
 erased (Let s v e) = erased $ subst s v e
 erased (Symbol s) = Symbol s
-erased (Erased e) = Erased e
 
 erasedBetaEq :: Expr i -> Expr i -> Bool
 erasedBetaEq e1 e2 = alphaEq (erased . nf $ e1) (erased . nf $ e2)
@@ -252,8 +250,8 @@ validTyping env vt1 vt2 ve2 = valid (nf vt1) (nf vt2)
         valid (Level s i) (Level s' i') = s == s' && i >= i'
         valid (Universe ls) (Universe ls') = universeValid ls ls'
         valid (Universe ls) e = either (const False) (universeValid ls) (universe env e)
-        valid (Lam _ (s, t) e) (Lam _ (s', t') e') = valid e (substVar s' s e') && valid t t'
-        valid (App f x) (App f' x') = valid f f' && valid x x'
+        valid (Lam _ (er, s, t) e) (Lam _ (er', s', t') e') = er == er' && valid e (substVar s' s e') && valid t t'
+        valid (App f (er,x)) (App f' (er',x')) = er == er' && valid f f' && valid x x'
         valid (InterT (s, t1) t2) (InterT (s', t1') t2') = case nf ve2 of
             Inter e1 _e2 -> valid (subst s e1 t2) t2' && valid t1 t1'
             _ -> valid t2 (substVar s' s t2') && valid t1 t1'
@@ -264,14 +262,13 @@ validTyping env vt1 vt2 ve2 = valid (nf vt1) (nf vt2)
         valid (Let s v e) e' = valid (subst s v e) e'
         valid e (Let s v e') = valid e (subst s v e')
         valid (Symbol s) (Symbol s') = s == s'
-        valid (Erased e) (Erased e') = valid e e'
         valid _ _ = False
 
 universe :: Show i => Env i -> Expr i -> TC Levels
 universe _ LevelT = return $ singleton "" 0
 universe _ (Level s i) = throwError $ "The term \"" ++ s ++ "+" ++ show i ++ ")\" does not have a universe."
 universe _ (Universe ls) = return ((+1) <$> ls)
-universe env (Lam _ (s, t) e) = do
+universe env (Lam _ (_er, s, t) e) = do
     u1 <- universe env t
     u2 <- universe (extend env s t) e
     return $ maxLevel u1 u2
@@ -288,25 +285,6 @@ universe env (As e _i) = universe env e
 universe env (Typed _ e) = universe env e
 universe env (Let s v e) = universe env (subst s v e)
 universe env (Symbol s) = findVar env s >>= ((((+(-1)) <$>) <$>) . universe env) . snd
-universe env (Erased e) = universe env e
-
-sameErasure :: Expr i -> Expr i -> Bool
-sameErasure (Erased _) (Erased _) = True
-sameErasure (Erased _) _ = False
-sameErasure _ (Erased _) = False
-sameErasure _ _ = True
-
-addErased :: Expr i -> Expr i
-addErased (Erased e) = Erased e
-addErased e = Erased e
-
-unErase :: Expr i -> Expr i
-unErase (Erased e) = e
-unErase e = e
-
-propagateErase :: Expr i -> Expr i
-propagateErase (Erased (Lam i (s, t) e)) = Lam i (s, Erased t) (Erased e)
-propagateErase e = e
 
 data Status = SExpr | SType | SUniverse deriving (Show, Eq)
 downgrade :: Status -> Status
@@ -322,23 +300,23 @@ tCheck env (Level s _i) = do
         (isT, LevelT) -> return (isT, LevelT)
         t -> throwError $ "The symbol in a level expression must be a \"#l\", found \"" ++ show t ++ "\""
 tCheck _ (Universe ls) = let l = (+1) <$> ls in return (SUniverse, Universe l)
-tCheck env (Lam i (s, t) e) = do
+tCheck env (Lam i (er, s, t) e) = do
     (isT, tt) <- tCheck env t
     case isT of
         SExpr -> throwError $ "The type of a type must be a universe, which is not the case for \"[" ++ s ++ ": " ++ show t ++ "]: " ++ show tt ++ "\", " ++ show isT ++ " ."
         _ -> do
             let env' = extend env s t
             (isT', te) <- tCheck env' e
-            return (isT', Lam i (s, t) te)
-tCheck env (App f x) = do
+            return (isT', Lam i (er, s, t) te)
+tCheck env (App f (er,x)) = do
     (isT, tf) <- tCheck env f
     (_isT', tx) <- tCheck env x
-    case propagateErase . unTyped . whnf $ tf of
-        Lam _i (s, t) b -> do
-            unless (sameErasure t x) $ throwError $ "In application the erasure must match and be specified manually, erasure of \"" ++ show t ++ "\" and \"" ++ show x ++ "\" differ"
-            unless (validTyping env t tx x) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ": U " ++ show (universe env t) ++ ",\n" ++ show (nf tx) ++ ": U " ++ show (universe env tx) ++ "\nin " ++ show (App f x) ++ "."
-            return (isT, subst s (unErase x) b)
-        e -> throwError $ "Non-function in application (" ++ show (App f x) ++ "): " ++ show e ++ "."
+    case unTyped . whnf $ tf of
+        Lam _i (er', s, t) b -> do
+            unless (er == er') $ throwError $ "In application the erasure must match and be specified manually, erasures \n" ++ show t ++ ",\n" ++ showErrasure er ++ show x ++ "\ndiffer."
+            unless (validTyping env t tx x) $ throwError $ "Bad function argument type:\n" ++ show (nf t) ++ ": U " ++ show (universe env t) ++ ",\n" ++ show (nf tx) ++ ": U " ++ show (universe env tx) ++ "\nin " ++ show (App f (er,x)) ++ "."
+            return (isT, subst s x b)
+        e -> throwError $ "Non-function in application (" ++ show (App f (er,x)) ++ "): " ++ show e ++ "."
 tCheck env (InterT (s, t1) t2) = do
     (isT, tt1) <- tCheck env t1
     case isT of
@@ -356,18 +334,19 @@ tCheck env (Inter e1 e2) = do
 tCheck env (As e i) = do
     (isT, te) <- tCheck env e
     case te of
-        (InterT (s, t1) t2) -> case i of 
+        (InterT (s, t1) t2) -> case i of
             One -> return (isT, t1)
             Two -> return (isT, subst s (As e One) t2)
         t -> throwError $ "The post-fix operator to access a dependent intersection must be applied to a term whose type is a dependent intersection, provided:\n" ++ show (As e i) ++ ": " ++ show t
 tCheck env (Typed t e) = do
     _ <- tCheck env t
     (isT, te) <- tCheck env e
-    unless (validTyping env t te e) $ throwError $ "Type missmatch:\n" ++ show (nf t) ++ ",\n" ++ show (nf te) ++ "\n." --"in " ++ show (t ::> e) ++ "."
+    unless (validTyping env t te e) $ case (nf t, nf e) of
+        (InterT (s, t1) t2, Inter e1 _e2) -> throwError $ "Type missmatch:\n" ++ show (InterT (s, t1 ) (subst s (nf e1) (nf t2))) ++ ",\n" ++ show (nf te) ++ "\n."
+        _ -> throwError $ "Type missmatch:\n" ++ show (nf t) ++ ",\n" ++ show (nf te) ++ "\n." --"in " ++ show (t ::> e) ++ "."
     return (isT, t)
 tCheck env (Let s v e) = tCheck env v *> tCheck env (subst s v e)
 tCheck env (Symbol s) = findVar env s
-tCheck env (Erased e) = second addErased <$> tCheck env e
 
 maxLevel :: Levels -> Levels -> Levels
 maxLevel l1 l2 = lmax l1 (toList l2)
@@ -384,7 +363,7 @@ showLam s lam = do
     putStrLn $ s ++ ":\n" ++ show (erased lam)
     case typeCheck lam of
         Right t -> do
-         putStrLn $ s ++ " :: " ++ show t ++ " | " ++ case universe initialEnv t of 
+         putStrLn $ s ++ " :: " ++ show t ++ " | " ++ case universe initialEnv t of
             Right ls -> show (Universe ls :: Expr ())
             Left err -> show err
          putStrLn $ s ++ " e.nf= " ++ show (erased . nf $ lam)

@@ -1,6 +1,5 @@
 -- Id
-au
-@Id = (i: '#L) -> (T: '#U i) -> (t: T) -> T :> t;
+@Id = (i: #L) '-> (T: #U i) '-> (t: T) -> T :> t;
 
 -- Void
 @Void = (i: #L) -> (A: #U i) -> A;
@@ -33,16 +32,16 @@ au
   (P: (a: A) -> #U i) -> e [(x: A) -> (p: P x) -> P a] [Refl i A a P];
 
 -- Nat
-@CNat = (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> '#U i :> P;
-@CZero = (i: '#L) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> z;
-@CSucc = (i: '#L) -> (n: CNat 'i) -> (P: '#U i) -> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> s [n 'P s z];
+@CNat = (i: #L) '-> (P: #U i) '-> (s: (p: P) -> P) -> (z: P) -> #U i :> P;
+@CZero = (i: #L) '-> (P: #U i) '-> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> z;
+@CSucc = (i: #L) '-> (n: CNat 'i) -> (P: #U i) '-> (s: (p: P) -> P) -> (z: P) -> CNat 'i 'P s z :> s [n 'P s z];
 
-@INat = (i: '#L) -> (n: '[CNat 'i]) -> (P: '(n: [CNat 'i]) -> #U i) -> (s: (n: '[CNat 'i]) -> (p: P 'n) -> P '['[CSucc 'i] 'n]) -> (z: P '[CZero 'i]) -> '#U i :> P 'n;
-@IZero = (i: '#L) -> (P: '(n: [CNat 'i]) -> #U i) -> (s: (n: '[CNat 'i]) -> (p: P 'n) -> P '['[CSucc 'i] 'n]) -> (z: P '[CZero 'i]) -> INat 'i '[CZero 'i] 'P s z :> z;
-@ISucc = (i: '#L) -> (n: '[CNat 'i]) -> (in: INat 'i 'n) -> (P: '(n: CNat 'i) -> #U i) -> (s: (n: '[CNat 'i]) -> (p: P 'n) -> P '['[CSucc 'i] 'n]) -> (z: P '[CZero 'i]) -> INat 'i '['[CSucc 'i] 'n] 'P s z :> s 'n [in 'P s z];
+@INat = (i: #L) '-> (n: CNat 'i) '-> (P: (n: CNat 'i) '-> #U i) '-> (s: (n: CNat 'i) '-> (p: P 'n) -> P '[CSucc 'i n]) -> (z: P '[CZero 'i]) -> #U i :> P 'n;
+@IZero = (i: #L) '-> (P: (n: CNat 'i) '-> #U i) '-> (s: (n: CNat 'i) '-> (p: P 'n) -> P '[CSucc 'i n]) -> (z: P '[CZero 'i]) -> INat 'i '[CZero 'i] 'P s z :> z;
+@ISucc = (i: #L) '-> (n: CNat 'i) '-> (in: INat 'i 'n) -> (P: (n: CNat 'i) '-> #U i) '-> (s: (n: CNat 'i) '-> (p: P 'n) -> P '[CSucc 'i n]) -> (z: P '[CZero 'i]) -> INat 'i '[CSucc 'i n] 'P s z :> s 'n [in 'P s z];
 
-@Nat = (i: '#L) -> (n: CNat 'i /\ INat 'i 'n);
+@Nat = (i: #L) '-> (n: CNat 'i /\ INat 'i 'n);
 @IdNat = (n: Nat) -> Nat :> n;
-@Zero = (i: '#L) -> Nat 'i :> CZero 'i ^ IZero 'i;
--- @Succ = (i: '#L) -> (n: Nat 'i) -> Nat 'i :> CSucc 'i n.1 ^ ISucc 'i 'n.1 n.2;
--- @c2nat = (i: '#L) -> (c: CNat '#i+1) -> c '[Nat 'i] [Succ 'i];
+@Zero = (i: #L) '-> Nat 'i :> CZero 'i ^ IZero 'i;
+@Succ = (i: #L) '-> (n: Nat 'i) -> Nat 'i :> CSucc 'i n.1 ^ ISucc 'i 'n.1 n.2;
+@c2nat = (i: #L) '-> (c: CNat '#i+1) -> c '[Nat 'i] [Succ 'i];

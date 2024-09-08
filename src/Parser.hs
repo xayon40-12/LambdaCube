@@ -4,7 +4,7 @@ module Parser (parse, parseShow, parseExamples) where
 import Text.Parsec.String
 import Text.Parsec.Char
 import Text.Parsec hiding (parse)
-import Lib (Sym, Expr (..), Levels, showLam, AsT (..))
+import Lib (Sym, Expr (..), Levels, showLam, AsT (..), Erased, app, app')
 import Data.Functor
 import Data.Map.Strict (fromList)
 import qualified Text.Parsec as P
@@ -62,6 +62,9 @@ levels = fromList <$> sepBy1 (try lv <|> ((,0) <$> sym)) (char ',')
 universe :: Parser (Expr Info)
 universe = Universe <$> (char 'U' *> space *> levels)
 
+erased :: Parser Erased
+erased = char '\'' $> True <|> return False
+
 introduce :: Parser (Expr Info)
 introduce = do
   pstart <- getPosition
@@ -69,9 +72,10 @@ introduce = do
   t <- char ':' *> expr
   let
     lambda = do
-      e <- char ')' *> spaces *> string "->" *> expr
+      er <- char ')' *> spaces *> erased
+      e <- string "->" *> expr
       i <- info pstart
-      return $ Lam i (s, t) e
+      return $ Lam i (er, s, t) e
     intersection = do
       t2 <- string "/\\" *> expr <* char ')'
       return $ InterT (s, t) t2
@@ -79,9 +83,6 @@ introduce = do
 
 symbol :: Parser (Expr Info)
 symbol = Symbol <$> sym
-
-erased :: Parser (Expr Info)
-erased = char '\'' *> (Erased <$> postExpr)
 
 parens :: Parser (Expr Info)
 parens = char '[' *> expr <* char ']'
@@ -100,7 +101,7 @@ surroundCommentSpaces :: Parser (Expr Info) -> Parser (Expr Info)
 surroundCommentSpaces p = spaces *> comments *> p <* spaces <* comments
 
 baseExpr :: Parser (Expr Info)
-baseExpr = erased <|> named <|> special <|> introduce <|> symbol <|> parens
+baseExpr = named <|> special <|> introduce <|> symbol <|> parens
 
 postExpr :: Parser (Expr Info)
 postExpr = foldl' (.) surroundCommentSpaces posts baseExpr
@@ -111,10 +112,11 @@ postExpr = foldl' (.) surroundCommentSpaces posts baseExpr
 opExpr :: Parser (Expr Info)
 opExpr = foldl' (.) id ops postExpr
     where
-      opApp = associate ALeft "" App
+      opApp = associate ALeft "" app
+      opApp' = associate ALeft "'" app'
       opIntersect = associate ARight "^" Inter
       opType = associate ANone ":>" Typed
-      ops = [opType, opIntersect, opApp]
+      ops = [opType, opIntersect, opApp, opApp']
 
 expr :: Parser (Expr Info)
 expr = opExpr
