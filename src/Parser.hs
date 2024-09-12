@@ -26,13 +26,10 @@ info s = do
     file = sourceName s
     s' = (sourceLine s, sourceColumn s)
 
-validSym :: Parser Char
-validSym = alphaNum
-
 sym :: Parser Sym
 sym = do
   l <- letter
-  ls <- many validSym
+  ls <- many alphaNum
   return $ l:ls
 
 named :: Parser (Expr Info)
@@ -49,7 +46,7 @@ levelT = char 'L' $> LevelT
 
 lv :: Parser (Sym, Int)
 lv = do
-  s <- many validSym <* char '+'
+  s <- sym <* char '+'
   i <- read <$> many1 digit
   return (s, i)
 

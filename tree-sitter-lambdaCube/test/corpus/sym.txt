@@ -1,0 +1,10 @@
+=====
+ sym
+=====
+
+test1
+
+---
+
+(source_file
+	(sym))

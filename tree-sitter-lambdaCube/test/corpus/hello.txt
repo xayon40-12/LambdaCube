@@ -1,9 +1,0 @@
-===========
-basic hello
-===========
-
-hello
-
----
-
-(source_file)
