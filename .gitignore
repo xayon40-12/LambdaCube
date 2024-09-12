@@ -1,2 +1,4 @@
 .stack-work/
 *~
+tree-sitter*/*
+!tree-sitter*/grammar.js
