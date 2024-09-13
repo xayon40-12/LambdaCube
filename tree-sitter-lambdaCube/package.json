@@ -47,9 +47,10 @@
   "tree-sitter": [
     {
       "scope": "source.lam3",
-      "file-tipes": "lam3",
+      "file-types": ["lam3"],
       "injection-regex": "^lambdaCube$",
-      "first-line-regex": "#!.*\\blambdaCube$"
+      "first-line-regex": "#!.*\\blambdaCube$",
+      "highlights": "queries/highlights.scm"
     }
   ]
 }
