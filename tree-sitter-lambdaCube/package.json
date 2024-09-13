@@ -48,7 +48,8 @@
     {
       "scope": "source.lam3",
       "file-tipes": "lam3",
-      "injection-regex": "^lambdaCube$"
+      "injection-regex": "^lambdaCube$",
+      "first-line-regex": "#!.*\\blambdaCube$"
     }
   ]
 }

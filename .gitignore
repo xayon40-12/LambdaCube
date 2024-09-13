@@ -4,3 +4,4 @@ tree-sitter*/*
 !tree-sitter*/package.json
 !tree-sitter*/grammar.js
 !tree-sitter*/test/
+!tree-sitter*/queries/
