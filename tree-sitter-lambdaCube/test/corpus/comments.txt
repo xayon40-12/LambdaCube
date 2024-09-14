@@ -1,0 +1,23 @@
+==========
+ comments
+==========
+
+
+-- aoeu snth
+aoeu
+-- aoeu
+1234
+{-  aoe -- {- oaeu -} -} {-
+aoeu {- 1234 -} u  -}
+
+---
+
+(source_file
+	(comment_line)
+	(sym)
+	(comment_line)
+	(nat)
+	(comment_block
+		(comment_line)
+		(comment_block)))
+

@@ -1,0 +1,6 @@
+-- a line comment
+-- <- comment.line
+
+{- a block comment -- with a line comment
+inside and {- another block comment inside -} -}
+-- <- comment.block
