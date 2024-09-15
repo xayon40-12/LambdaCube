@@ -9,3 +9,4 @@
 (universe) @keyword.storage.type
 (named) @keyword.storage.type
 (named name: (sym) @variable.parameter)
+(bracket) @punctuation.bracket

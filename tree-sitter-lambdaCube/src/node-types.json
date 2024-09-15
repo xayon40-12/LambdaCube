@@ -1,5 +1,48 @@
 [
   {
+    "type": "bracket",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "bracket",
+          "named": true
+        },
+        {
+          "type": "comment_block",
+          "named": true
+        },
+        {
+          "type": "comment_line",
+          "named": true
+        },
+        {
+          "type": "level_t",
+          "named": true
+        },
+        {
+          "type": "named",
+          "named": true
+        },
+        {
+          "type": "nat",
+          "named": true
+        },
+        {
+          "type": "sym",
+          "named": true
+        },
+        {
+          "type": "universe",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "comment_block",
     "named": true,
     "fields": {},
@@ -26,6 +69,10 @@
       "multiple": true,
       "required": true,
       "types": [
+        {
+          "type": "bracket",
+          "named": true
+        },
         {
           "type": "comment_block",
           "named": true
@@ -161,6 +208,14 @@
   },
   {
     "type": "@",
+    "named": false
+  },
+  {
+    "type": "[",
+    "named": false
+  },
+  {
+    "type": "]",
     "named": false
   },
   {

@@ -207,6 +207,23 @@
         ]
       }
     },
+    "bracket": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "["
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_expr"
+        },
+        {
+          "type": "STRING",
+          "value": "]"
+        }
+      ]
+    },
     "_base_expr": {
       "type": "CHOICE",
       "members": [
@@ -269,6 +286,10 @@
     "_expr": {
       "type": "CHOICE",
       "members": [
+        {
+          "type": "SYMBOL",
+          "name": "bracket"
+        },
         {
           "type": "SYMBOL",
           "name": "_comment"
