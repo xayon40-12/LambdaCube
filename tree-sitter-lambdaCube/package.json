@@ -50,7 +50,9 @@
       "file-types": ["lam3"],
       "injection-regex": "^lambdaCube$",
       "first-line-regex": "#!.*\\blambdaCube$",
-      "highlights": "queries/highlights.scm"
+      "highlights": "queries/highlights.scm",
+      "locals": "queries/locals.scm",
+      "tags": "queries/tags.scm"
     }
   ]
 }

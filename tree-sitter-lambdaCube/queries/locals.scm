@@ -1,3 +1,5 @@
+; locals.scm
+
 (sym) @local.reference
 (named) @local.scope
 (named name: (sym) @local.definition)
