@@ -1,0 +1,15 @@
+==========
+ universe
+==========
+
+#U i+1,0,i
+
+---
+
+(expr
+	(universe
+		(level_add
+			(sym)
+			(nat))
+		(nat)
+		(sym)))

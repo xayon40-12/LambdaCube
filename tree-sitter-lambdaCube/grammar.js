@@ -18,6 +18,10 @@ module.exports = grammar({
 
     sym: $ => /[a-zA-Z]\w*/,
     nat: $ => /\d+/,
+    _levels: $ => seq($._level, repeat(seq(',', $._level))),
+    _level: $ => choice($.sym, $.level_add, $.nat),
+    level_add: $ => seq($.sym, '+', $.nat),
+    universe: $ => seq('#U', $._levels),
     named: $ => prec.right(1, seq(
       '@',
       field('name', $.sym),
@@ -26,9 +30,9 @@ module.exports = grammar({
       ';',
       field('rest', optional($.expr)))),
     
-    _base_expr: $ => choice($.named, $.sym, $.nat),
+    _base_expr: $ => choice($.named, $.sym, $.nat, $.universe),
     _pre_expr: $ => prec.right(3, seq($._comment, $._expr)),
     _post_expr: $ => prec.left(2, seq($._expr, $._comment)),
-    _expr: $ => choice($._base_expr, $._pre_expr, $._post_expr),
+    _expr: $ => choice($._comment, $._base_expr, $._pre_expr, $._post_expr),
   }
 });

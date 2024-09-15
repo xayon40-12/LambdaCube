@@ -7,8 +7,6 @@
 {-  block comment -- with a single line {- and symbols of block comments that are discarded due to the previous single line comment -} -} {-
 rest of the block {- with a second block comment inside -}   -}
 
-expr
-
 ---
 
 (expr
@@ -16,6 +14,5 @@ expr
 	(comment_line)
 	(comment_block
 		(comment_line)
-		(comment_block))
-	(sym))
+		(comment_block)))
 
