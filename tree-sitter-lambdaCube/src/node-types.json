@@ -35,6 +35,10 @@
           "named": true
         },
         {
+          "type": "level_t",
+          "named": true
+        },
+        {
           "type": "named",
           "named": true
         },
@@ -161,6 +165,10 @@
   },
   {
     "type": "comment_line",
+    "named": true
+  },
+  {
+    "type": "level_t",
     "named": true
   },
   {

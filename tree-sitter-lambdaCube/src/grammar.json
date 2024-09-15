@@ -78,6 +78,10 @@
       "type": "PATTERN",
       "value": "\\d+"
     },
+    "level_t": {
+      "type": "STRING",
+      "value": "#L"
+    },
     "_levels": {
       "type": "SEQ",
       "members": [
@@ -221,6 +225,10 @@
         {
           "type": "SYMBOL",
           "name": "universe"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "level_t"
         }
       ]
     },
