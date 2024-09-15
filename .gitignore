@@ -5,3 +5,4 @@ tree-sitter*/*
 !tree-sitter*/grammar.js
 !tree-sitter*/test/
 !tree-sitter*/queries/
+!tree-sitter*/src/
