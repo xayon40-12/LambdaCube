@@ -20,6 +20,10 @@
           "named": true
         },
         {
+          "type": "lambda",
+          "named": true
+        },
+        {
           "type": "level_t",
           "named": true
         },
@@ -82,6 +86,10 @@
           "named": true
         },
         {
+          "type": "lambda",
+          "named": true
+        },
+        {
           "type": "level_t",
           "named": true
         },
@@ -105,6 +113,116 @@
     }
   },
   {
+    "type": "lambda",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket",
+            "named": true
+          },
+          {
+            "type": "comment_block",
+            "named": true
+          },
+          {
+            "type": "comment_line",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "level_t",
+            "named": true
+          },
+          {
+            "type": "named",
+            "named": true
+          },
+          {
+            "type": "nat",
+            "named": true
+          },
+          {
+            "type": "sym",
+            "named": true
+          },
+          {
+            "type": "universe",
+            "named": true
+          }
+        ]
+      },
+      "erasure": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "erased",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "sym",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket",
+            "named": true
+          },
+          {
+            "type": "comment_block",
+            "named": true
+          },
+          {
+            "type": "comment_line",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "level_t",
+            "named": true
+          },
+          {
+            "type": "named",
+            "named": true
+          },
+          {
+            "type": "nat",
+            "named": true
+          },
+          {
+            "type": "sym",
+            "named": true
+          },
+          {
+            "type": "universe",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "level_add",
     "named": true,
     "fields": {},
@@ -124,43 +242,7 @@
     }
   },
   {
-    "type": "named",
-    "named": true,
-    "fields": {
-      "body": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "expr",
-            "named": true
-          }
-        ]
-      },
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "sym",
-            "named": true
-          }
-        ]
-      },
-      "rest": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "expr",
-            "named": true
-          }
-        ]
-      }
-    }
-  },
-  {
-    "type": "universe",
+    "type": "levels",
     "named": true,
     "fields": {},
     "children": {
@@ -183,6 +265,121 @@
     }
   },
   {
+    "type": "named",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket",
+            "named": true
+          },
+          {
+            "type": "comment_block",
+            "named": true
+          },
+          {
+            "type": "comment_line",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "level_t",
+            "named": true
+          },
+          {
+            "type": "named",
+            "named": true
+          },
+          {
+            "type": "nat",
+            "named": true
+          },
+          {
+            "type": "sym",
+            "named": true
+          },
+          {
+            "type": "universe",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "sym",
+            "named": true
+          }
+        ]
+      },
+      "rest": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "bracket",
+            "named": true
+          },
+          {
+            "type": "comment_block",
+            "named": true
+          },
+          {
+            "type": "comment_line",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "level_t",
+            "named": true
+          },
+          {
+            "type": "named",
+            "named": true
+          },
+          {
+            "type": "nat",
+            "named": true
+          },
+          {
+            "type": "sym",
+            "named": true
+          },
+          {
+            "type": "universe",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "universe",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "levels",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": " -}",
     "named": false
   },
@@ -195,11 +392,27 @@
     "named": false
   },
   {
+    "type": "(",
+    "named": false
+  },
+  {
+    "type": ")",
+    "named": false
+  },
+  {
     "type": "+",
     "named": false
   },
   {
     "type": ",",
+    "named": false
+  },
+  {
+    "type": "->",
+    "named": false
+  },
+  {
+    "type": ":",
     "named": false
   },
   {
@@ -220,6 +433,10 @@
   },
   {
     "type": "comment_line",
+    "named": true
+  },
+  {
+    "type": "erased",
     "named": true
   },
   {

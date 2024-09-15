@@ -8,8 +8,9 @@
 
 (expr
 	(universe
-		(level_add
-			(sym)
-			(nat))
-		(nat)
-		(sym)))
+		(levels
+			(level_add
+				(sym)
+				(nat))
+			(nat)
+			(sym))))

@@ -10,11 +10,8 @@
 (expr
 	(named
 		(sym)
-		(expr
-			(nat))
-		(expr
-			(comment_line)
-			(named
-				(sym)
-				(expr
-					(nat))))))
+		(nat)
+		(comment_line)
+		(named
+			(sym)
+			(nat))))

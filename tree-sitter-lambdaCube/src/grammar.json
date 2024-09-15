@@ -82,7 +82,7 @@
       "type": "STRING",
       "value": "#L"
     },
-    "_levels": {
+    "levels": {
       "type": "SEQ",
       "members": [
         {
@@ -150,7 +150,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_levels"
+          "name": "levels"
         }
       ]
     },
@@ -181,7 +181,7 @@
             "name": "body",
             "content": {
               "type": "SYMBOL",
-              "name": "expr"
+              "name": "_expr"
             }
           },
           {
@@ -196,7 +196,7 @@
               "members": [
                 {
                   "type": "SYMBOL",
-                  "name": "expr"
+                  "name": "_expr"
                 },
                 {
                   "type": "BLANK"
@@ -221,6 +221,71 @@
         {
           "type": "STRING",
           "value": "]"
+        }
+      ]
+    },
+    "erased": {
+      "type": "STRING",
+      "value": "'"
+    },
+    "lambda": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "sym"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "FIELD",
+          "name": "type",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_expr"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ")"
+        },
+        {
+          "type": "FIELD",
+          "name": "erasure",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "erased"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "->"
+        },
+        {
+          "type": "FIELD",
+          "name": "body",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_expr"
+          }
         }
       ]
     },
@@ -305,6 +370,10 @@
         {
           "type": "SYMBOL",
           "name": "_post_expr"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "lambda"
         }
       ]
     }

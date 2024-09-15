@@ -1,0 +1,23 @@
+========
+ lambda
+========
+
+(i: #L) '-> (T: #U i) '-> (t: T) -> t
+
+---
+
+(expr
+  (lambda
+    (sym)
+    (level_t)
+    (erased)
+    (lambda
+      (sym)
+      (universe
+		(levels
+	        (sym)))
+      (erased)
+      (lambda
+        (sym)
+        (sym)
+        (sym)))))

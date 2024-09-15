@@ -1,5 +1,6 @@
 #U i+1,0,i
--- <- keyword.storage.type
+-- <- type.builtin
 -- ^ variable
 --  ^ operator
 --   ^ constant.numeric.integer
+--    ^ punctuation
