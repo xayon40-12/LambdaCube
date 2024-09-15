@@ -51,6 +51,7 @@
       "injection-regex": "^lambdaCube$",
       "first-line-regex": "#!.*\\blambdaCube$",
       "highlights": "queries/highlights.scm",
+      "injections": "queries/injections.scm",
       "locals": "queries/locals.scm",
       "tags": "queries/tags.scm"
     }
