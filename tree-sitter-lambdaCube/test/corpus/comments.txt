@@ -2,22 +2,20 @@
  comments
 ==========
 
+-- single line comment
+-- single line comment
+{-  block comment -- with a single line {- and symbols of block comments that are discarded due to the previous single line comment -} -} {-
+rest of the block {- with a second block comment inside -}   -}
 
--- aoeu snth
-aoeu
--- aoeu
-1234
-{-  aoe -- {- oaeu -} -} {-
-aoeu {- 1234 -} u  -}
+expr
 
 ---
 
-(source_file
+(expr
 	(comment_line)
-	(sym)
 	(comment_line)
-	(nat)
 	(comment_block
 		(comment_line)
-		(comment_block)))
+		(comment_block))
+	(sym))
 

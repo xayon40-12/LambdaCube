@@ -1,0 +1,7 @@
+   @a = a; -- comment
+-- ^ keyword.storage.type
+--  ^ variable.parameter 
+--      ^ variable.parameter
+--         ^ comment.line
+@b = c;
+--   ^ variable

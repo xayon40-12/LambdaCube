@@ -1,0 +1,20 @@
+=======
+ named
+=======
+
+@a = 123; -- comment
+@b = 456;
+
+---
+
+(expr
+	(named
+		(sym)
+		(expr
+			(nat))
+		(expr
+			(comment_line)
+			(named
+				(sym)
+				(expr
+					(nat))))))

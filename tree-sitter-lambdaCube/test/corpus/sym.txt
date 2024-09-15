@@ -6,5 +6,5 @@ test1
 
 ---
 
-(source_file
+(expr
 	(sym))
