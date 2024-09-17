@@ -1,11 +1,11 @@
 ; highlights.scm
 
-(comment_line) @comment.line
-(comment_block) @comment.block
+(commentLine) @comment.line
+(commentBlock) @comment.block
 (sym) @variable
 (nat) @constant.numeric.integer
-(level_t) @type.builtin
-(level_add) @operator
+(levelT) @type.builtin
+(levelAdd) @operator
 (universe) @type.builtin
 (universe (levels) @punctuation)
 (named) @keyword.storage.type
@@ -15,3 +15,5 @@
 (lambda name: (sym) @variable.parameter)
 (lambda erasure: (erased) @operator)
 (opTyped) @operator
+(intersectionT) @keyword.function
+(intersectionT name: (sym) @variable.parameter)

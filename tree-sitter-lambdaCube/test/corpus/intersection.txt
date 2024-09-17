@@ -1,0 +1,40 @@
+==============
+ intersection
+==============
+
+(A: #U 0) -> (B: (a: A) -> #U 0) -> (a: A) -> (b: B a) -> (a: A /\ B a) :> a ^ b
+
+---
+
+(expr
+  (lambda
+    (sym)
+    (universe
+      (levels
+        (nat)))
+    (lambda
+      (sym)
+      (lambda
+        (sym)
+        (sym)
+        (universe
+          (levels
+            (nat))))
+      (lambda
+        (sym)
+        (sym)
+        (lambda
+          (sym)
+          (opApp
+            (sym)
+            (sym))
+          (opTyped
+            (intersectionT
+              (sym)
+              (sym)
+              (opApp
+                (sym)
+                (sym)))
+            (opIntersection
+              (sym)
+              (sym))))))))

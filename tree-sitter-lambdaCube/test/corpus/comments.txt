@@ -11,10 +11,10 @@ rest of the block {- with a second block comment inside -}   -}
 ---
 
 (expr
-	(comment_line)
-	(comment_line)
-	(comment_block
-		(comment_line)
-		(comment_block))
-	(comment_line))
+	(commentLine)
+	(commentLine)
+	(commentBlock
+		(commentLine)
+		(commentBlock))
+	(commentLine))
 

@@ -9,7 +9,7 @@
 (expr
   (lambda
     (sym)
-    (level_t)
+    (levelT)
     (erased)
     (lambda
       (sym)

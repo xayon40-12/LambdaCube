@@ -10,19 +10,19 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "comment_line"
+          "name": "commentLine"
         },
         {
           "type": "SYMBOL",
-          "name": "comment_block"
+          "name": "commentBlock"
         }
       ]
     },
-    "comment_line": {
+    "commentLine": {
       "type": "PATTERN",
       "value": "-- [^\\n]*"
     },
-    "comment_block": {
+    "commentBlock": {
       "type": "SEQ",
       "members": [
         {
@@ -31,11 +31,11 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_end_comment"
+          "name": "_endComment"
         }
       ]
     },
-    "_end_comment": {
+    "_endComment": {
       "type": "CHOICE",
       "members": [
         {
@@ -51,7 +51,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "_end_comment"
+              "name": "_endComment"
             }
           ]
         },
@@ -64,7 +64,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "_end_comment"
+              "name": "_endComment"
             }
           ]
         }
@@ -78,7 +78,7 @@
       "type": "PATTERN",
       "value": "\\d+"
     },
-    "level_t": {
+    "levelT": {
       "type": "STRING",
       "value": "#L"
     },
@@ -116,7 +116,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "level_add"
+          "name": "levelAdd"
         },
         {
           "type": "SYMBOL",
@@ -124,7 +124,7 @@
         }
       ]
     },
-    "level_add": {
+    "levelAdd": {
       "type": "SEQ",
       "members": [
         {
@@ -289,6 +289,51 @@
         }
       ]
     },
+    "intersectionT": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "sym"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "FIELD",
+          "name": "type1",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_expr"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "/\\"
+        },
+        {
+          "type": "FIELD",
+          "name": "type2",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_expr"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": ")"
+        }
+      ]
+    },
     "opTyped": {
       "type": "PREC_LEFT",
       "value": 4,
@@ -310,9 +355,30 @@
         ]
       }
     },
+    "opIntersection": {
+      "type": "PREC_RIGHT",
+      "value": 5,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_expr"
+          },
+          {
+            "type": "STRING",
+            "value": "^"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_expr"
+          }
+        ]
+      }
+    },
     "opApp": {
       "type": "PREC_LEFT",
-      "value": 5,
+      "value": 6,
       "content": {
         "type": "SEQ",
         "members": [
@@ -339,7 +405,7 @@
         ]
       }
     },
-    "_base_expr": {
+    "_baseExpr": {
       "type": "CHOICE",
       "members": [
         {
@@ -360,11 +426,11 @@
         },
         {
           "type": "SYMBOL",
-          "name": "level_t"
+          "name": "levelT"
         }
       ]
     },
-    "_per_comments": {
+    "_preComments": {
       "type": "PREC_RIGHT",
       "value": 8,
       "content": {
@@ -381,7 +447,7 @@
         ]
       }
     },
-    "_post_comments": {
+    "_postComments": {
       "type": "PREC_LEFT",
       "value": 7,
       "content": {
@@ -411,15 +477,15 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_base_expr"
+          "name": "_baseExpr"
         },
         {
           "type": "SYMBOL",
-          "name": "_per_comments"
+          "name": "_preComments"
         },
         {
           "type": "SYMBOL",
-          "name": "_post_comments"
+          "name": "_postComments"
         },
         {
           "type": "SYMBOL",
@@ -427,7 +493,15 @@
         },
         {
           "type": "SYMBOL",
+          "name": "intersectionT"
+        },
+        {
+          "type": "SYMBOL",
           "name": "opTyped"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "opIntersection"
         },
         {
           "type": "SYMBOL",

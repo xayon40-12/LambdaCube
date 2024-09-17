@@ -1,4 +1,6 @@
 ; injections.scm
 
-((comment_line) @injection.content
+((commentLine) @injection.content
+ (#set! injection.language "comment"))
+((commentBlock) @injection.content
  (#set! injection.language "comment"))

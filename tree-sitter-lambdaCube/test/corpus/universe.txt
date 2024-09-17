@@ -9,7 +9,7 @@
 (expr
 	(universe
 		(levels
-			(level_add
+			(levelAdd
 				(sym)
 				(nat))
 			(nat)

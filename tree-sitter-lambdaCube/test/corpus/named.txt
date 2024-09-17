@@ -11,7 +11,7 @@
 	(named
 		(sym)
 		(nat)
-		(comment_line)
+		(commentLine)
 		(named
 			(sym)
 			(nat))))
