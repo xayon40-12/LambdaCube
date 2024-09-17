@@ -6,6 +6,7 @@ This is my attempt to do a dependently type programming language. It is inspired
 - [From realizability to induction via dependent intersection](https://www.sciencedirect.com/science/article/pii/S0168007218300277?ref=pdf_download&fr=RR-2&rr=8a9706eecc573c95)
 
 **Table of contents:**
+- [Syntax highlighting] (#Syntax-highlihting)
 - [Grammar](#Grammar)
 - [Erasure](#erasure)
   - [Erasure mark on lambda](#Erasure-mark-on-lambda)
@@ -16,6 +17,44 @@ This is my attempt to do a dependently type programming language. It is inspired
 - [Examples](#Examples)
   - [Todo](#Todo)
     - [Nat](#Nat)
+
+## Syntax highlihting
+
+There is a tree-sitter parser in this repository [tree-sitter-lambdaCube](https://github.com/xayon40-12/LambdaCube/tree/main/tree-sitter-lambdaCube) which can be used for syntax highlighting.
+
+### Helix
+
+Here is a setup for the [Helix editor](https://helix-editor.com/).
+
+- In your helix `language.toml` (probably in `~/.config/helix/`), add a language entry
+  ```toml
+  [[language]]
+  name = "lambdaCube"
+  scope = "source.lam3"
+  roots = ["main.lam3"]
+  file-types = ["lam3"]
+  comment-tokens = "--"
+  ```
+  so that the language is recognised correctly.
+- Then add a grammar entry for the tree-sitter parser:
+  ```toml
+  [[grammar]]
+  name="lambdaCube"
+  source={git="https://github.com/xayon40-12/lambdaCube.git", subpath="tree-sitter-lambdaCube", rev="main"}
+  ```
+- Once the grammar is added to `language.toml`, you need to fetch it and build it with
+  ```bash
+  helix -g fetch
+  helix -g build
+  ```
+- And finally, you need to make the tree-sitter queries accessible.  
+  - First, create a `queries/` folder if it does not already exists in your helix `runtime/` folder (most likely next to `language.toml` in `~/.config/helix/`).
+  - Then, from inside the `queries/` folder, create a symbolic link to the queries which where fetched by helix:
+    ```bash
+    ln -s ../grammars/sources/lambdaCube/tree-sitter-lambdaCube/queries/ lambdaCube
+    ```
+
+**NOTE**: If the tree-sitter in this repository changes, you might need to first delete the grammar repository fetched by Helix in the `runtime` repository (`runtime/grammars/sources/lambdaCube`) and then use `helix -g fetch` and `helix -g build` again.
 
 ## Grammar
 
