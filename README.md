@@ -6,7 +6,7 @@ This is my attempt to do a dependently type programming language. It is inspired
 - [From realizability to induction via dependent intersection](https://www.sciencedirect.com/science/article/pii/S0168007218300277?ref=pdf_download&fr=RR-2&rr=8a9706eecc573c95)
 
 **Table of contents:**
-- [Syntax highlighting] (#Syntax-highlihting)
+- [Syntax highlighting](#Syntax-highlihting)
 - [Grammar](#Grammar)
 - [Erasure](#erasure)
   - [Erasure mark on lambda](#Erasure-mark-on-lambda)
@@ -55,6 +55,10 @@ Here is a setup for the [Helix editor](https://helix-editor.com/).
     ```
 
 **NOTE**: If the tree-sitter in this repository changes, you might need to first delete the grammar repository fetched by Helix in the `runtime` repository (`runtime/grammars/sources/lambdaCube`) and then use `helix -g fetch` and `helix -g build` again.
+
+#### Themes
+
+Tree-sitter allows to provide a large variety of highlight queries. However, every themes only handle a handful of all these available queries. I recommend to try the theme "catppuccin_mocha" for this language as it covers most of the highlight queries used in this language. It is set as default in this github repository thanks to the `.helix/config.toml`, so opening any `.lam3` with `helix` from inside this repository will use the "catppuccin_mocha" theme.
 
 ## Grammar
 
