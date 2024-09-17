@@ -1,0 +1,38 @@
+=======
+ opApp
+=======
+
+(A: #U 0) '-> (s: (B: #U 0) '-> (b: B) -> B ) -> (a: A) -> A :> s 'A a
+
+---
+
+(expr
+  (lambda
+    (sym)
+    (universe
+      (levels
+        (nat)))
+    (erased)
+    (lambda
+      (sym)
+      (lambda
+        (sym)
+        (universe
+          (levels
+            (nat)))
+        (erased)
+        (lambda
+          (sym)
+          (sym)
+          (sym)))
+      (lambda
+        (sym)
+        (sym)
+        (opTyped
+          (sym)
+          (opApp
+            (opApp
+              (sym)
+              (erased)
+              (sym))
+            (sym)))))))

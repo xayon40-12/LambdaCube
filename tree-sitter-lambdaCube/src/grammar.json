@@ -291,7 +291,7 @@
     },
     "opTyped": {
       "type": "PREC_LEFT",
-      "value": 2,
+      "value": 4,
       "content": {
         "type": "SEQ",
         "members": [
@@ -302,6 +302,35 @@
           {
             "type": "STRING",
             "value": ":>"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_expr"
+          }
+        ]
+      }
+    },
+    "opApp": {
+      "type": "PREC_LEFT",
+      "value": 5,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_expr"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "erased"
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
           },
           {
             "type": "SYMBOL",
@@ -399,6 +428,10 @@
         {
           "type": "SYMBOL",
           "name": "opTyped"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "opApp"
         }
       ]
     }

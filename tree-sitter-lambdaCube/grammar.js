@@ -42,7 +42,8 @@ module.exports = grammar({
       "->",
       field("body", $._expr)
     ),
-    opTyped: $ => prec.left(2, seq($._expr, ":>", $._expr)),
+    opTyped: $ => prec.left(4, seq($._expr, ":>", $._expr)),
+    opApp: $ => prec.left(5, seq($._expr, optional($.erased), $._expr)),
     
     _base_expr: $ => choice($.named, $.sym, $.nat, $.universe, $.level_t),
     _per_comments: $ => prec.right(8, seq($._comment, $._expr)),
@@ -54,7 +55,8 @@ module.exports = grammar({
       $._per_comments,
       $._post_comments,
       $.lambda,
-      $.opTyped
+      $.opTyped,
+      $.opApp,
     ),
   }
 });
