@@ -156,7 +156,7 @@
     },
     "named": {
       "type": "PREC_RIGHT",
-      "value": 1,
+      "value": 9,
       "content": {
         "type": "SEQ",
         "members": [
@@ -289,6 +289,27 @@
         }
       ]
     },
+    "opTyped": {
+      "type": "PREC_LEFT",
+      "value": 2,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_expr"
+          },
+          {
+            "type": "STRING",
+            "value": ":>"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_expr"
+          }
+        ]
+      }
+    },
     "_base_expr": {
       "type": "CHOICE",
       "members": [
@@ -314,9 +335,9 @@
         }
       ]
     },
-    "_pre_expr": {
+    "_per_comments": {
       "type": "PREC_RIGHT",
-      "value": 3,
+      "value": 8,
       "content": {
         "type": "SEQ",
         "members": [
@@ -331,9 +352,9 @@
         ]
       }
     },
-    "_post_expr": {
+    "_post_comments": {
       "type": "PREC_LEFT",
-      "value": 2,
+      "value": 7,
       "content": {
         "type": "SEQ",
         "members": [
@@ -365,15 +386,19 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_pre_expr"
+          "name": "_per_comments"
         },
         {
           "type": "SYMBOL",
-          "name": "_post_expr"
+          "name": "_post_comments"
         },
         {
           "type": "SYMBOL",
           "name": "lambda"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "opTyped"
         }
       ]
     }

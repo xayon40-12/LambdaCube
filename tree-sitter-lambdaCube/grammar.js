@@ -23,7 +23,7 @@ module.exports = grammar({
     _level: $ => choice($.sym, $.level_add, $.nat),
     level_add: $ => seq($.sym, "+", $.nat),
     universe: $ => seq("#U", $.levels),
-    named: $ => prec.right(1, seq(
+    named: $ => prec.right(9, seq(
       "@",
       field("name", $.sym),
       " = ",
@@ -42,17 +42,19 @@ module.exports = grammar({
       "->",
       field("body", $._expr)
     ),
+    opTyped: $ => prec.left(2, seq($._expr, ":>", $._expr)),
     
     _base_expr: $ => choice($.named, $.sym, $.nat, $.universe, $.level_t),
-    _pre_expr: $ => prec.right(3, seq($._comment, $._expr)),
-    _post_expr: $ => prec.left(2, seq($._expr, $._comment)),
+    _per_comments: $ => prec.right(8, seq($._comment, $._expr)),
+    _post_comments: $ => prec.left(7, seq($._expr, $._comment)),
     _expr: $ => choice(
       $.bracket,
       $._comment,
       $._base_expr,
-      $._pre_expr,
-      $._post_expr,
-      $.lambda
+      $._per_comments,
+      $._post_comments,
+      $.lambda,
+      $.opTyped
     ),
   }
 });

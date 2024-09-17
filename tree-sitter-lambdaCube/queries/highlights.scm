@@ -14,3 +14,4 @@
 (lambda) @keyword.function
 (lambda name: (sym) @variable.parameter)
 (lambda erasure: (erased) @operator)
+(opTyped) @operator

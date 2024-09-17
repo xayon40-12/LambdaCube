@@ -1,0 +1,19 @@
+=========
+ opTyped
+=========
+
+(T: #U 0) -> (t: T) -> T :> t
+
+---
+(expr
+	(lambda
+	    (sym)
+	    (universe
+			(levels
+				(nat)))
+	    (lambda
+			(sym)
+			(sym)
+			(opTyped
+				(sym)
+				(sym)))))
