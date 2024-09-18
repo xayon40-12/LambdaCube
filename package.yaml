@@ -1,6 +1,6 @@
-name:                lambdaCube
+name:                eriun
 version:             0.1.0.0
-github:              "xayon40-12/lambdaCube"
+github:              "xayon40-12/eriun"
 license:             BSD-3-Clause
 author:              "Nathan Touroux"
 maintainer:          "touroux.nathan@gmail.com"
@@ -47,7 +47,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - lambdaCube
+    - eriun
 
 tests:
   lambdaCube-test:
@@ -58,4 +58,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - lambdaCube
+    - eriun

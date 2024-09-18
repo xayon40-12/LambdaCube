@@ -1,6 +1,6 @@
-# Dependent lambda encoding
+# Eriun
 
-This is my attempt to do a dependently type programming language. It is inspired by:  
+This is my attempt to do a dependently typed programming language. It is inspired by:  
 - [Homotopy Type Theory](https://homotopytypetheory.org/book/)
 - [Simpler, Easier!](https://augustss.blogspot.com/2007/10/simpler-easier-in-recent-paper-simply.html?m=1)
 - [From realizability to induction via dependent intersection](https://www.sciencedirect.com/science/article/pii/S0168007218300277?ref=pdf_download&fr=RR-2&rr=8a9706eecc573c95)
@@ -18,6 +18,13 @@ This is my attempt to do a dependently type programming language. It is inspired
   - [Todo](#Todo)
     - [Nat](#Nat)
 
+## Name
+
+The name is symply the first letters of the main compenents of this language:
+- er: Erasure
+- i: Intersections (dependent ones)
+- un: Universes
+
 ## Syntax highlihting
 
 There is a tree-sitter parser in this repository [tree-sitter-lambdaCube](https://github.com/xayon40-12/LambdaCube/tree/main/tree-sitter-lambdaCube) which can be used for syntax highlighting.
@@ -29,18 +36,18 @@ Here is a setup for the [Helix editor](https://helix-editor.com/).
 - In your helix `language.toml` (probably in `~/.config/helix/`), add a language entry
   ```toml
   [[language]]
-  name = "lambdaCube"
-  scope = "source.lam3"
-  roots = ["main.lam3"]
-  file-types = ["lam3"]
+  name = "eriun"
+  scope = "source.eriun"
+  roots = ["main.eriun"]
+  file-types = ["eriun"]
   comment-tokens = "--"
   ```
   so that the language is recognised correctly.
 - Then add a grammar entry for the tree-sitter parser:
   ```toml
   [[grammar]]
-  name="lambdaCube"
-  source={git="https://github.com/xayon40-12/lambdaCube.git", subpath="tree-sitter-lambdaCube", rev="main"}
+  name="eriun"
+  source={git="https://github.com/xayon40-12/eriun.git", subpath="tree-sitter-eriun", rev="main"}
   ```
 - Once the grammar is added to `language.toml`, you need to fetch it and build it with
   ```bash
@@ -58,7 +65,7 @@ Here is a setup for the [Helix editor](https://helix-editor.com/).
 
 #### Themes
 
-Tree-sitter allows to provide a large variety of highlight queries. However, every themes only handle a handful of all these available queries. I recommend to try the theme "catppuccin_mocha" for this language as it covers most of the highlight queries used in this language. It is set as default in this github repository thanks to the `.helix/config.toml`, so opening any `.lam3` with `helix` from inside this repository will use the "catppuccin_mocha" theme.
+Tree-sitter allows to provide a large variety of highlight queries. However, every themes only handle a handful of all these available queries. I recommend to try the theme "catppuccin_mocha" for this language as it covers most of the highlight queries used in this language. It is set as default in this github repository thanks to the `.helix/config.toml`, so opening any `.eriun` with `helix` from inside this repository will use the "catppuccin_mocha" theme.
 
 ## Grammar
 
@@ -103,17 +110,13 @@ Each line in order correspond to:
 ## Erasure
 The erasure correpsond to the computation part of an expression. For instance, the identity is the function that returns its input unchanged. However, in the formalism proporsed here, additional components are needed to preperly type the identity function:
 ```
-(i: '#L) -> (T: '#U i) -> (t: T) -> T :> t
+(i: #L) '-> (T: #U i) '-> (t: T) -> T :> t
 ```
 a level `i` and a generic type `T` are needed to type the identity function. They are therefor marked as erased with `'`. Erasing this expression will remove all symbols marked as erased and will strip all the remaning symbols of their types. After erasure, the above identity function becomes:
 ```
 t -> t
 ```
 which is the identity function in untyped lambda calculus.
-
-### Erasure mark on lambda
-
-When a lambda (a term or a type) is marked to be erased, the mark is propagated inside the lambda to the type of the symbol and to the expression. In `(P: '(t: T) -> #U i) -> (t: T) -> '#U i :> P 't` we see that to provide `t` to `P` we most mark it a erased so that it would have the erased type `'T` due to the propagation of the erased mark in `P` from `'(t: T) -> #U i` to `(t: 'T) -> '#U i`.
 
 ## Cumulative Universes
 A universe is a type of type indexed by a level. For a level `l`, the corresponding universe is denoted by `U l`.
@@ -146,7 +149,7 @@ If two types `A` and `B` are beta-equivalent `A =_beta B`, then a value `a` of t
 
 ## Examples
 
-See files with `.lam3` extension in the [math](math/) folder.
+See files with `.eriun` extension in the [math](math/) folder.
 
 ### Todo
 

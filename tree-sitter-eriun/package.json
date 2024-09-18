@@ -1,8 +1,8 @@
 {
-  "name": "tree-sitter-lambdaCube",
+  "name": "tree-sitter-eriun",
   "version": "0.0.1",
-  "description": "lambdaCube grammar for tree-sitter",
-  "repository": "github:xayon40-12/lambdaCube/tree-sitter-lambdaCube",
+  "description": "eriun grammar for tree-sitter",
+  "repository": "github:xayon40-12/eriun/tree-sitter-eriun",
   "license": "MIT",
   "main": "bindings/node",
   "types": "bindings/node",
@@ -10,7 +10,7 @@
     "incremental",
     "parsing",
     "tree-sitter",
-    "lambdaCube"
+    "eriun"
   ],
   "files": [
     "grammar.js",
@@ -46,10 +46,10 @@
   },
   "tree-sitter": [
     {
-      "scope": "source.lam3",
-      "file-types": ["lam3"],
-      "injection-regex": "^lambdaCube$",
-      "first-line-regex": "#!.*\\blambdaCube$",
+      "scope": "source.eriun",
+      "file-types": ["eriun"],
+      "injection-regex": "^eriun$",
+      "first-line-regex": "#!.*\\beriun$",
       "highlights": "queries/highlights.scm",
       "injections": "queries/injections.scm",
       "locals": "queries/locals.scm",

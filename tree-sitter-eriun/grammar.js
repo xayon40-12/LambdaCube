@@ -2,7 +2,7 @@
 // @ts-check
 
 module.exports = grammar({
-  name: "lambdaCube",
+  name: "eriun",
 
   rules: {
     expr: $ => $._expr,
