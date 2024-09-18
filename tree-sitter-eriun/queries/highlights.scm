@@ -16,5 +16,6 @@
 (lambda erasure: (erased) @operator)
 (opTyped) @operator
 (opIntersection) @operator
+(postIntersection) @operator
 (intersectionT) @keyword.function
 (intersectionT name: (sym) @variable.parameter)

@@ -56,14 +56,16 @@ module.exports = grammar({
     opApp: $ => prec.left(6, seq($._expr, optional($.erased), $._expr)),
     
     _baseExpr: $ => choice($.named, $.sym, $.nat, $.universe, $.levelT),
-    _preComments: $ => prec.right(8, seq($._comment, $._expr)),
-    _postComments: $ => prec.left(7, seq($._expr, $._comment)),
+    _preComments: $ => prec.right(9, seq($._comment, $._expr)),
+    _postComments: $ => prec.left(8, seq($._expr, $._comment)),
+    postIntersection: $ => prec.left(7, seq($._expr, /\.[12]/)),
     _expr: $ => choice(
       $.bracket,
       $._comment,
       $._baseExpr,
       $._preComments,
       $._postComments,
+      $.postIntersection,
       $.lambda,
       $.intersectionT,
       $.opTyped,

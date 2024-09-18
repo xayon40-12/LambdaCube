@@ -52,6 +52,10 @@
           "named": true
         },
         {
+          "type": "postIntersection",
+          "named": true
+        },
+        {
           "type": "sym",
           "named": true
         },
@@ -134,6 +138,10 @@
           "named": true
         },
         {
+          "type": "postIntersection",
+          "named": true
+        },
+        {
           "type": "sym",
           "named": true
         },
@@ -207,6 +215,10 @@
             "named": true
           },
           {
+            "type": "postIntersection",
+            "named": true
+          },
+          {
             "type": "sym",
             "named": true
           },
@@ -262,6 +274,10 @@
           },
           {
             "type": "opTyped",
+            "named": true
+          },
+          {
+            "type": "postIntersection",
             "named": true
           },
           {
@@ -326,6 +342,10 @@
           },
           {
             "type": "opTyped",
+            "named": true
+          },
+          {
+            "type": "postIntersection",
             "named": true
           },
           {
@@ -404,6 +424,10 @@
           },
           {
             "type": "opTyped",
+            "named": true
+          },
+          {
+            "type": "postIntersection",
             "named": true
           },
           {
@@ -513,6 +537,10 @@
             "named": true
           },
           {
+            "type": "postIntersection",
+            "named": true
+          },
+          {
             "type": "sym",
             "named": true
           },
@@ -578,6 +606,10 @@
           },
           {
             "type": "opTyped",
+            "named": true
+          },
+          {
+            "type": "postIntersection",
             "named": true
           },
           {
@@ -649,6 +681,10 @@
           "named": true
         },
         {
+          "type": "postIntersection",
+          "named": true
+        },
+        {
           "type": "sym",
           "named": true
         },
@@ -712,6 +748,10 @@
           "named": true
         },
         {
+          "type": "postIntersection",
+          "named": true
+        },
+        {
           "type": "sym",
           "named": true
         },
@@ -772,6 +812,77 @@
         },
         {
           "type": "opTyped",
+          "named": true
+        },
+        {
+          "type": "postIntersection",
+          "named": true
+        },
+        {
+          "type": "sym",
+          "named": true
+        },
+        {
+          "type": "universe",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "postIntersection",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "bracket",
+          "named": true
+        },
+        {
+          "type": "commentBlock",
+          "named": true
+        },
+        {
+          "type": "commentLine",
+          "named": true
+        },
+        {
+          "type": "intersectionT",
+          "named": true
+        },
+        {
+          "type": "lambda",
+          "named": true
+        },
+        {
+          "type": "levelT",
+          "named": true
+        },
+        {
+          "type": "named",
+          "named": true
+        },
+        {
+          "type": "nat",
+          "named": true
+        },
+        {
+          "type": "opApp",
+          "named": true
+        },
+        {
+          "type": "opIntersection",
+          "named": true
+        },
+        {
+          "type": "opTyped",
+          "named": true
+        },
+        {
+          "type": "postIntersection",
           "named": true
         },
         {

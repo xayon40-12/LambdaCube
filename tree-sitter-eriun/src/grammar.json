@@ -432,7 +432,7 @@
     },
     "_preComments": {
       "type": "PREC_RIGHT",
-      "value": 8,
+      "value": 9,
       "content": {
         "type": "SEQ",
         "members": [
@@ -449,7 +449,7 @@
     },
     "_postComments": {
       "type": "PREC_LEFT",
-      "value": 7,
+      "value": 8,
       "content": {
         "type": "SEQ",
         "members": [
@@ -460,6 +460,23 @@
           {
             "type": "SYMBOL",
             "name": "_comment"
+          }
+        ]
+      }
+    },
+    "postIntersection": {
+      "type": "PREC_LEFT",
+      "value": 7,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_expr"
+          },
+          {
+            "type": "PATTERN",
+            "value": "\\.[12]"
           }
         ]
       }
@@ -486,6 +503,10 @@
         {
           "type": "SYMBOL",
           "name": "_postComments"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "postIntersection"
         },
         {
           "type": "SYMBOL",

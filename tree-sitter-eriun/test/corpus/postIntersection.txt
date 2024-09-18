@@ -1,0 +1,39 @@
+==================
+ postIntersection
+==================
+
+(a: #U 0) -> (B: (a: A) -> #U 0) -> (i: (a: A /\ B a)) -> (a: A) -> B i.1 :> i.2
+
+---
+(expr
+  (lambda
+    (sym)
+    (universe
+      (levels
+        (nat)))
+    (lambda
+      (sym)
+      (lambda
+        (sym)
+        (sym)
+        (universe
+          (levels
+            (nat))))
+      (lambda
+        (sym)
+        (intersectionT
+          (sym)
+          (sym)
+          (opApp
+            (sym)
+            (sym)))
+        (lambda
+          (sym)
+          (sym)
+          (opTyped
+            (opApp
+              (sym)
+              (postIntersection
+                (sym)))
+            (postIntersection
+              (sym))))))))
