@@ -230,23 +230,23 @@ erased (Symbol s) = Symbol s
 erasedBetaEq :: Expr i -> Expr i -> Bool
 erasedBetaEq e1 e2 = alphaEq (erased . nf $ e1) (erased . nf $ e2)
 
-newtype Env i = Env (Map Sym (Erased, Expr i)) deriving (Show)
+newtype Env i = Env (Map Sym (Status, Erased, Expr i)) deriving (Show)
 
 initialEnv :: Env i
 initialEnv = Env Map.empty
 
-extend :: Env i -> Erased -> Sym -> Type i -> Env i
-extend (Env ls) er s t = Env $ Map.insert s (er, t) ls
+extend :: Env i -> Sym -> Status -> Erased -> Type i -> Env i
+extend (Env ls) s status er t = Env $ Map.insert s (status, er, nf t) ls
 
 type ErrorMsg = String
 type TC a = Either ErrorMsg a
 throwError :: String -> TC a
 throwError = Left
 
-findVar :: Show i => Env i -> Sym -> TC (Status, Erased, Expr i)
+findVar :: Env i -> Sym -> TC (Status, Erased, Expr i)
 findVar (Env ls) s =
     case Map.lookup s ls of
-        Just (er, t) -> (\(s', _e) -> (downgrade s', er, nf t)) <$> tCheck (Env ls) True t
+        Just j -> return j
         Nothing -> throwError $ "Cannot find variable " ++ s
 
 unTyped :: Expr i  -> Expr i
@@ -280,12 +280,12 @@ universe _ (Level s i) = throwError $ "The term \"" ++ s ++ "+" ++ show i ++ ")\
 universe _ (Universe ls) = return ((+1) <$> ls)
 universe env (Lam _ (er, s, t) e) = do
     u1 <- universe env t
-    u2 <- universe (extend env er s t) e
+    u2 <- universe (extend env s undefined er t) e
     return $ maxLevel u1 u2
 universe env (App f _) = universe env f
 universe env (InterT (s, t1) t2) = do
     u1 <- universe env t1
-    u2 <- universe (extend env False s t1) t2
+    u2 <- universe (extend env s undefined False t1) t2
     return $ maxLevel u1 u2
 universe env (Inter e1 e2) = do
     u1 <- universe env e1
@@ -317,7 +317,7 @@ tCheck env cer (Lam i (er, s, t) e) = do
     case isT of
         SExpr -> throwError $ "The type of a type must be a universe, which is not the case for \"[" ++ s ++ ": " ++ show t ++ "]: " ++ show tt ++ "\", " ++ show isT ++ " ."
         _ -> do
-            let env' = extend env er s t
+            let env' = extend env s (downgrade isT) er t
             (isT', te) <- tCheck env' cer e
             return (isT', Lam i (er, s, t) te)
 tCheck env cer (App f (er,x)) = do
@@ -330,11 +330,11 @@ tCheck env cer (App f (er,x)) = do
             return (isT, subst s x b)
         e -> throwError $ "Non-function in application (" ++ show (App f (er,x)) ++ "): " ++ show e ++ "."
 tCheck env _cer (InterT (s, t1) t2) = do
-    (isT, tt1) <- tCheck env True t1
-    case isT of
+    (statusT1, tt1) <- tCheck env True t1
+    case statusT1 of
         SExpr -> throwError $ "The type of a type must be a universe, which is not the case for \"[" ++ s ++ ": " ++ show t1 ++ "]: " ++ show tt1 ++ "\"."
         _ -> do
-            let env' = extend env False s t1
+            let env' = extend env s (downgrade statusT1) False t1
             (isT', tt2) <- tCheck env' True t2
             return (isT', InterT (s, t1) tt2)
 tCheck env cer (Inter e1 e2) = do
