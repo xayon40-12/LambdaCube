@@ -41,6 +41,8 @@ Here is a setup for the [Helix editor](https://helix-editor.com/).
   roots = ["main.eriun"]
   file-types = ["eriun"]
   comment-tokens = "--"
+  block-comment-tokens = { start = "{- ", end = " -}" }
+  injection-regex = "^eriun$"
   ```
   so that the language is recognised correctly.
 - Then add a grammar entry for the tree-sitter parser:
@@ -109,11 +111,11 @@ Each line in order correspond to:
 
 ## Erasure
 The erasure correpsond to the computation part of an expression. For instance, the identity is the function that returns its input unchanged. However, in the formalism proporsed here, additional components are needed to preperly type the identity function:
-```
+```eriun
 (i: #L) '-> (T: #U i) '-> (t: T) -> T :> t
 ```
 a level `i` and a generic type `T` are needed to type the identity function. They are therefor marked as erased with `'`. Erasing this expression will remove all symbols marked as erased and will strip all the remaning symbols of their types. After erasure, the above identity function becomes:
-```
+```eriun
 t -> t
 ```
 which is the identity function in untyped lambda calculus.
@@ -124,7 +126,7 @@ A valid level can be: a literal positive integer, a symbol of the special level 
 
 Cumulative universes are such that for any level `l1` strictly smaller than `l2` we have `U l1` of type `U l2`. A non-cumulative universe system would only allow that `U l1` is of type `U l2` when `l2 = l1 + 1`.
 
-```
+```eriun
 (l1: #L) -> (l2: #L) -> (A: #U l1) -> (B: #U l2) -> U l1,l2
 ```
 where `l1,l2` correspond to the maximum of `l1` and `l2`
@@ -139,7 +141,7 @@ A value `x` of type `a: A /\ B a` can be changed to be of type `A` with the nota
 
 ## Beta equivalence
 Two values (term or type) are beta-equivalent if their erasure is the same. for instance:
-```
+```eriun
 [c2nat [CSucc n]].1 => [CSucc n] Nat Succ Zero => [P -> s -> z -> s [n P s z]] Nat Succ Zero => Succ [n Nat Succ Zero] => P -> s -> z -> s [[n Nat Succ Zero] P s z]
 CSucc [c2nat n].1 => CSucc [n Nat Succ Zero] => P -> s -> z -> s [[n Nat Succ Zero] P s z]
 ```
@@ -155,7 +157,7 @@ See files with `.eriun` extension in the [math](math/) folder.
 
 The symbol '???' is used when a proof is not finished to be written. It is not valid in the language but just used here for unfinished work.
 #### Nat
-```
+```eriun
 @Nat = (n: CNat /\ INat n);
 @Zero = Nat :> CZero ^ IZero;
 @Succ = (n: Nat) -> Nat :> [CSucc n.1] ^ [ISucc n.1 n.2];
