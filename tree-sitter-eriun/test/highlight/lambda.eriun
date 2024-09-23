@@ -3,4 +3,6 @@
 --  ^ variable.parameter
 --     ^ type.builtin
 --         ^ operator
+--                            ^ variable.parameter
+--                               ^ variable
 --                                     ^ variable
