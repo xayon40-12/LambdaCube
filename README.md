@@ -77,46 +77,46 @@ A symbol `S` that appears in a context named `l` is denoted by `elem(S,l)`.
 A symbol matching any symbol in the context `l` is denoted by `any(l)`.
 An expression with an attached context `l` is denoted by `expr[l]`.
 An expression with an available symbol `S` in addition to a context `l` is denoted by `expr[l,S]`.
-A valid expression with context `l` is any sequence of character matching the following 8 lines, where any letter or symbol which was not introduced betneen backticks in the previous centenses has to be matched literally:
+A valid expression with context `l` is any sequence of character matching the following 8 lines, where any letter or symbol which was not introduced betneen backticks in the previous centenses has to be matched literally (except the line number):
 ```
-@S = expr[l]; expr[l,S]
-#L
-#U 'levels'
-(S: expr[l]) -> expr[l,S]
-expr[l] :> expr[l]
-expr[l] expr[l]
-any(l)
-S: expr[l] /\ expr[l,S]
-expr[l].1
-expr[l].2
-[expr[l]]
-Beta expr[l] expr[l]
-'expr[l]
+ 1. @S = expr[l]; expr[l,S]
+ 2. #L
+ 3. #U 'levels'
+ 4. (S: expr[l]) expr[l,S]
+ 5. <S: expr[l]> expr[l,S]
+ 6. expr[l] :> expr[l]
+ 7. expr[l] expr[l]
+ 8. expr[l] 'expr[l]
+ 9. any(l)
+10. S: expr[l] /\ expr[l,S]
+11. expr[l].1
+12. expr[l].2
+13. [expr[l]]
 ```
 The `;` can be replaced by a newline followed by at least one space.
 Each line in order correspond to:
-- declaration of a named expression that can be used in later expressions
-- type of universe levels
-- a universe whose rank correspond to the provided 'levels' which should be a comma separated list of level (see [Level](#Level)) which represent the maximum of each provided levels.
-- decleration of a dependent lambda (symbol: type) -> expr
-- typing of the right expression with the first one as its type
-- application, left associative
-- a symbol available in the context l
-- a dependent intersection
-- term of the dependent intersection converted to the type of the left part
-- term `t` of the dependent intersection converted to the type of the right part (where the symbol `S` is replaced by `t.1`)
-- parens to force a particular association order
-- type conversion of a value between two beta-equivalent types
-- an erased expression (can be used for the type in a lambda)
+1. declaration of a named expression that can be used in later expressions
+2. type of universe levels
+3. a universe whose rank correspond to the provided 'levels' which should be a comma separated list of level (see [Level](#Level)) which represent the maximum of each provided levels.
+4. decleration of a dependent lambda `(symbol: type) expr`
+5. decleration of a dependent lambda whose parameter is erased `<symbol: type> expr`
+6. typing of the right expression with the first one as its type
+7. application, left associative
+8. application of an erased value, left associative
+9. a symbol available in the context l
+10. a dependent intersection
+11. term of the dependent intersection converted to the type of the left part
+12. term `t` of the dependent intersection converted to the type of the right part (where the symbol `S` is replaced by `t.1`)
+13. parens to force a particular association order
 
 ## Erasure
 The erasure correpsond to the computation part of an expression. For instance, the identity is the function that returns its input unchanged. However, in the formalism proporsed here, additional components are needed to preperly type the identity function:
 ```eriun
-(i: #L) '-> (T: #U i) '-> (t: T) -> T :> t
+<i: #L> <T: #U i> (t: T) T :> t
 ```
 a level `i` and a generic type `T` are needed to type the identity function. They are therefor marked as erased with `'`. Erasing this expression will remove all symbols marked as erased and will strip all the remaning symbols of their types. After erasure, the above identity function becomes:
 ```eriun
-t -> t
+t :-> t
 ```
 which is the identity function in untyped lambda calculus.
 
@@ -127,7 +127,7 @@ A valid level can be: a literal positive integer, a symbol of the special level 
 Cumulative universes are such that for any level `l1` strictly smaller than `l2` we have `U l1` of type `U l2`. A non-cumulative universe system would only allow that `U l1` is of type `U l2` when `l2 = l1 + 1`.
 
 ```eriun
-(l1: #L) -> (l2: #L) -> (A: #U l1) -> (B: #U l2) -> U l1,l2
+(l1: #L) (l2: #L) (A: #U l1) (B: #U l2) U l1,l2
 ```
 where `l1,l2` correspond to the maximum of `l1` and `l2`
 
@@ -140,10 +140,10 @@ For a value `a` of type `A` and a value `b` of type `B a`, the pair `a ^ b` is o
 A value `x` of type `a: A /\ B a` can be changed to be of type `A` with the notation `x.1` and it can be changed to be of type `B x.1` with notation `x.2`. In both cases, the value can be returned to the original intersection type by appending a `.0`. Thus `x.1.0` and `x.2.0` are both of type `a: A /\ B a`.
 
 ## Beta equivalence
-Two values (term or type) are beta-equivalent if their erasure is the same. for instance:
+Two values (term or type) are beta-equivalent if the normal form of their erasure is the same. for instance:
 ```eriun
-[c2nat [CSucc n]].1 => [CSucc n] Nat Succ Zero => [P -> s -> z -> s [n P s z]] Nat Succ Zero => Succ [n Nat Succ Zero] => P -> s -> z -> s [[n Nat Succ Zero] P s z]
-CSucc [c2nat n].1 => CSucc [n Nat Succ Zero] => P -> s -> z -> s [[n Nat Succ Zero] P s z]
+[c2nat [CSucc n]].1 => [CSucc n] Nat Succ Zero => [P :-> s :-> z :-> s [n P s z]] Nat Succ Zero => Succ [n Nat Succ Zero] => P :-> s :-> z :-> s [[n Nat Succ Zero] P s z]
+CSucc [c2nat n].1 => CSucc [n Nat Succ Zero] => P :-> s :-> z :-> s [[n Nat Succ Zero] P s z]
 ```
 where the symbol `=>` here separates the transformation steps.
 
@@ -152,17 +152,3 @@ If two types `A` and `B` are beta-equivalent `A =_beta B`, then a value `a` of t
 ## Examples
 
 See files with `.eriun` extension in the [math](math/) folder.
-
-### Todo
-
-The symbol '???' is used when a proof is not finished to be written. It is not valid in the language but just used here for unfinished work.
-#### Nat
-```eriun
-@Nat = (n: CNat /\ INat n);
-@Zero = Nat :> CZero ^ IZero;
-@Succ = (n: Nat) -> Nat :> [CSucc n.1] ^ [ISucc n.1 n.2];
-
-@c2nat = (i: '#L) -> (n: CNat i) -> Nat :> n Nat Succ Zero;
-@c2nat_reflection = (n: Nat) -> (i: #L) -> Equal i Nat [c2nat n.1] n :> ???;
-@Ind = (i: '#L) -> (P: '(n: Nat) -> #U i) -> (s: (n: 'Nat) -> (p: P n) -> P [Succ n]) -> (z: P Zero) -> (n: Nat) -> P n :> ???;
-```
