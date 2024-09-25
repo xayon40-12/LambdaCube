@@ -1,2 +1,2 @@
-(T: #U 0) -> (t: T) -> T :> t
---                       ^ operator
+(T: #U 0) (t: T) T :> t
+--                 ^ operator

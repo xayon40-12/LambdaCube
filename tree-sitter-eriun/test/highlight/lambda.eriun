@@ -1,8 +1,7 @@
-   (i: #L) '-> (T: #U i) '-> (t: T) -> t
+   <i: #L> <T: #U i> (t: T) t
 -- ^ keyword.function
 --  ^ variable.parameter
 --     ^ type.builtin
---         ^ operator
---                            ^ variable.parameter
---                               ^ variable
---                                     ^ variable
+--                    ^ variable.parameter
+--                       ^ variable
+--                          ^ variable

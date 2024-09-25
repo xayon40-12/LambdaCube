@@ -1,2 +1,2 @@
-(A: #U 0) '-> (s: (B: #U 0) '-> (b: B) -> B ) -> (a: A) -> A :> s 'A a
---                                                                ^ operator
+<A: #U 0> (s: <B: #U 0> (B) B ) (a: A) A :> s 'A a
+--                                            ^ operator

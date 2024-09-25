@@ -54,17 +54,23 @@ show' LevelT _ = "#L"
 show' (Level s i) _ = s ++ "+" ++ show i 
 show' (Universe l) _ = "#U " ++ showL l
 show' (Lam _ (er, s, t) e) d
-    | null s = show' t d ++ " " ++ showErrasure er ++ "-> " ++ show' e d
-    | isSymbol "" t = s ++ " :" ++ showErrasure er ++ "-> " ++ show' e d
-    | otherwise = "(" ++ s ++ ": " ++ show' t d ++ ") " ++ showErrasure er ++ "-> " ++ show' e d
+    | null s = "|" ++ show' t d ++ erasedEnd er ++ " " ++ show' e d
+    | isSymbol "" t = s ++ " :-> " ++ show' e d -- only supposed to be produced by erasing so there is no point in showing the erasure as it was removed
+    | otherwise = erasedStart er ++ s ++ ": " ++ show' t d ++ erasedEnd er ++ " " ++ show' e d
 show' (App f@(Lam _ (_, _, _) _) x) d = "[" ++ show' f d ++ "] " ++ showApp x d
 show' (App f x) d = show' f d ++ " " ++ showApp x d
 show' (Typed t e) d = show' t d ++ " :> " ++ show' e d
-show' (InterT (s, t1) t2) d = s ++ ": " ++ show' t1 d ++ " /\\ " ++ show' t2 d
+show' (InterT (s, t1) t2) d = "(" ++ s ++ ": " ++ show' t1 d ++ " /\\ " ++ show' t2 d ++ ")"
 show' (Inter e1 e2) d = show' e1 d ++ " ^ " ++ show' e2 d
 show' (As e i) d = show' e d ++ "." ++ show i
 show' (Let s v e) d = "@" ++ s ++ " = " ++ show' v (d+1) ++ ";" ++ showNewLine d ++ show' e d
 show' (Symbol s) _ = s
+
+erasedStart, erasedEnd :: Bool -> String
+erasedStart False = "("
+erasedStart True = "<"
+erasedEnd False = ")"
+erasedEnd True = ">"
 
 showNewLine :: Int -> String
 showNewLine 0 = "\n"

@@ -13,7 +13,8 @@
 (named name: (sym) @variable)
 (lambda) @keyword.function
 (lambda name: (sym) @variable.parameter)
-(lambda erasure: (erased) @operator)
+(erasedLambda) @keyword.function
+(erasedLambda name: (sym) @variable.parameter)
 (intersectionT) @keyword.function
 (intersectionT name: (sym) @variable.parameter)
 (opTyped) @operator

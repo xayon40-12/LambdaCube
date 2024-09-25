@@ -4,7 +4,7 @@ module Parser (parse, parseShow, parseExamples) where
 import Text.Parsec.String
 import Text.Parsec.Char
 import Text.Parsec hiding (parse)
-import Lib (Sym, Expr (..), Levels, showLam, AsT (..), Erased, app, app')
+import Lib (Sym, Expr (..), Levels, showLam, AsT (..), app, app')
 import Data.Functor
 import Data.Map.Strict (fromList)
 import qualified Text.Parsec as P
@@ -59,24 +59,32 @@ levels = fromList <$> sepBy1 (try lv <|> ((,0) <$> sym)) (char ',')
 universe :: Parser (Expr Info)
 universe = Universe <$> (char 'U' *> space *> levels)
 
-erased :: Parser Erased
-erased = char '\'' $> True <|> return False
-
 introduce :: Parser (Expr Info)
 introduce = do
   pstart <- getPosition
-  s <- char '(' *> sym
-  t <- char ':' *> expr
+  er <- erasedStart
+  (s, t) <- withSym <|> withoutSym
   let
-    lambda = do
-      er <- char ')' *> spaces *> erased
-      e <- string "->" *> expr
+    lambda end = do
+      e <- char end *> spaces *> optional (string "->") *> expr
       i <- info pstart
       return $ Lam i (er, s, t) e
     intersection = do
       t2 <- string "/\\" *> expr <* char ')'
       return $ InterT (s, t) t2
-  lambda <|> intersection
+  if er then
+    lambda '>'
+  else
+    lambda ')' <|> intersection
+  where
+    erasedStart = (char '(' $> False) <|> (char '<' $> True)
+    withSym = do
+      s <- try (sym <* char ':')
+      t <- expr
+      return (s, t)
+    withoutSym = do
+      t <- expr
+      return ("", t)
 
 symbol :: Parser (Expr Info)
 symbol = Symbol <$> sym

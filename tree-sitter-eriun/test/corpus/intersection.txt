@@ -2,7 +2,7 @@
  intersection
 ==============
 
-(A: #U 0) -> (B: (a: A) -> #U 0) -> (a: A) -> (b: B a) -> (a: A /\ B a) :> a ^ b
+(A: #U 0) (B: (A) #U 0) (a: A) (b: B a) (a: A /\ B a) :> a ^ b
 
 ---
 
@@ -15,7 +15,6 @@
     (lambda
       (sym)
       (lambda
-        (sym)
         (sym)
         (universe
           (levels

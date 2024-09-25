@@ -2,7 +2,7 @@
  opTyped
 =========
 
-(T: #U 0) -> (t: T) -> T :> t
+(T: #U 0) (t: T) T :> t
 
 ---
 (expr

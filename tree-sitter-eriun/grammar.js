@@ -34,12 +34,22 @@ module.exports = grammar({
     erased: $ => "'",
     lambda: $ => seq(
       "(", 
-      field("name", $.sym),
-      ":",
+      optional(seq(
+        field("name", $.sym),
+        ":"
+      )),
       field("type", $._expr),
       ")",
-      field("erasure", optional($.erased)),
-      "->",
+      field("body", $._expr)
+    ),
+    erasedLambda: $ => seq(
+      "<", 
+      optional(seq(
+        field("name", $.sym),
+        ":"
+      )),
+      field("type", $._expr),
+      ">",
       field("body", $._expr)
     ),
     intersectionT: $ => seq(
@@ -67,6 +77,7 @@ module.exports = grammar({
       $._postComments,
       $.postIntersection,
       $.lambda,
+      $.erasedLambda,
       $.intersectionT,
       $.opTyped,
       $.opIntersection,

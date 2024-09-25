@@ -2,21 +2,19 @@
  lambda
 ========
 
-(i: #L) '-> (T: #U i) '-> (t: T) -> t
+<i: #L> <T: #U i> (t: T) t
 
 ---
 
 (expr
-  (lambda
+  (erasedLambda
     (sym)
     (levelT)
-    (erased)
-    (lambda
+    (erasedLambda
       (sym)
       (universe
 		(levels
 	        (sym)))
-      (erased)
       (lambda
         (sym)
         (sym)
