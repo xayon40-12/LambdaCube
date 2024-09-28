@@ -26,10 +26,12 @@ module.exports = grammar({
     named: $ => prec.right(9, seq(
       "@",
       field("name", $.sym),
+      ": ",
+      field("type", $._expr),
       " = ",
       field("body", $._expr),
       ";",
-      field("rest", optional($._expr)))),
+      field("rest", $._expr))),
     bracket: $ => seq("[", $._expr, "]"),
     erased: $ => "'",
     lambda: $ => seq(
@@ -61,9 +63,12 @@ module.exports = grammar({
       field("type2", $._expr),
       ")"
       ),
-    opTyped: $ => prec.left(4, seq($._expr, ":>", $._expr)),
     opIntersection: $ => prec.right(5, seq($._expr, "^", $._expr)),
-    opApp: $ => prec.left(6, seq($._expr, optional($.erased), $._expr)),
+    opApp: $ => prec.left(6, seq(
+      field("fun", $._expr),
+      field("erasure", optional($.erased)),
+      field("value", $._expr)
+    )),
     
     _baseExpr: $ => choice($.named, $.sym, $.nat, $.universe, $.levelT),
     _preComments: $ => prec.right(9, seq($._comment, $._expr)),
@@ -79,7 +84,6 @@ module.exports = grammar({
       $.lambda,
       $.erasedLambda,
       $.intersectionT,
-      $.opTyped,
       $.opIntersection,
       $.opApp,
     ),

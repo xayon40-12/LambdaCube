@@ -2,7 +2,7 @@
  opApp
 =======
 
-<A: #U 0> (s: <B: #U 0> (B) B) (a: A) A :> s 'A a
+<A: #U 0> (s: <B: #U 0> (B) B) (a: A) s 'A a
 
 ---
 
@@ -25,11 +25,9 @@
       (lambda
         (sym)
         (sym)
-        (opTyped
-          (sym)
+        (opApp
           (opApp
-            (opApp
-              (sym)
-              (erased)
-              (sym))
-            (sym)))))))
+            (sym)
+            (erased)
+            (sym))
+          (sym))))))

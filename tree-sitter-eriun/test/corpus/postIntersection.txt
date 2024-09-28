@@ -2,34 +2,38 @@
  postIntersection
 ==================
 
-(A: #U 0) (B: (A) #U 0) (i: (a: A /\ B a)) B i.1 :> i.2
+@Post: (A: #U 0) (B: (A) #U 0) (i: (a: A /\ B a)) B i.1 = i.2;
+Post
 
 ---
+
 (expr
-  (lambda
+  (named
     (sym)
-    (universe
-      (levels
-        (nat)))
     (lambda
       (sym)
+      (universe
+        (levels
+          (nat)))
       (lambda
         (sym)
-        (universe
-          (levels
-            (nat))))
-      (lambda
-        (sym)
-        (intersectionT
+        (lambda
           (sym)
+          (universe
+            (levels
+              (nat))))
+        (lambda
           (sym)
-          (opApp
+          (intersectionT
             (sym)
-            (sym)))
-        (opTyped
+            (sym)
+            (opApp
+              (sym)
+              (sym)))
           (opApp
             (sym)
             (postIntersection
-              (sym)))
-          (postIntersection
-            (sym)))))))
+              (sym))))))
+    (postIntersection
+      (sym))
+      (sym)))

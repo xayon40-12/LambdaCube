@@ -1,7 +1,6 @@
-   @a = a; -- comment
+   @a: #U 1 = #U 0; -- comment
 -- ^ keyword.storage.type
 --  ^ variable 
---      ^ variable
---          ^ comment.line
-@b = a;
---   ^ variable
+--                  ^ comment.line
+   a
+-- ^ variable

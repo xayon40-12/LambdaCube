@@ -52,10 +52,6 @@
           "named": true
         },
         {
-          "type": "opTyped",
-          "named": true
-        },
-        {
           "type": "postIntersection",
           "named": true
         },
@@ -142,10 +138,6 @@
             "named": true
           },
           {
-            "type": "opTyped",
-            "named": true
-          },
-          {
             "type": "postIntersection",
             "named": true
           },
@@ -218,10 +210,6 @@
             "named": true
           },
           {
-            "type": "opTyped",
-            "named": true
-          },
-          {
             "type": "postIntersection",
             "named": true
           },
@@ -287,10 +275,6 @@
         },
         {
           "type": "opIntersection",
-          "named": true
-        },
-        {
-          "type": "opTyped",
           "named": true
         },
         {
@@ -371,10 +355,6 @@
             "named": true
           },
           {
-            "type": "opTyped",
-            "named": true
-          },
-          {
             "type": "postIntersection",
             "named": true
           },
@@ -434,10 +414,6 @@
           },
           {
             "type": "opIntersection",
-            "named": true
-          },
-          {
-            "type": "opTyped",
             "named": true
           },
           {
@@ -506,10 +482,6 @@
           },
           {
             "type": "opIntersection",
-            "named": true
-          },
-          {
-            "type": "opTyped",
             "named": true
           },
           {
@@ -582,10 +554,6 @@
           },
           {
             "type": "opIntersection",
-            "named": true
-          },
-          {
-            "type": "opTyped",
             "named": true
           },
           {
@@ -699,10 +667,6 @@
             "named": true
           },
           {
-            "type": "opTyped",
-            "named": true
-          },
-          {
             "type": "postIntersection",
             "named": true
           },
@@ -728,7 +692,7 @@
       },
       "rest": {
         "multiple": true,
-        "required": false,
+        "required": true,
         "types": [
           {
             "type": "bracket",
@@ -775,7 +739,65 @@
             "named": true
           },
           {
-            "type": "opTyped",
+            "type": "postIntersection",
+            "named": true
+          },
+          {
+            "type": "sym",
+            "named": true
+          },
+          {
+            "type": "universe",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket",
+            "named": true
+          },
+          {
+            "type": "commentBlock",
+            "named": true
+          },
+          {
+            "type": "commentLine",
+            "named": true
+          },
+          {
+            "type": "erasedLambda",
+            "named": true
+          },
+          {
+            "type": "intersectionT",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "levelT",
+            "named": true
+          },
+          {
+            "type": "named",
+            "named": true
+          },
+          {
+            "type": "nat",
+            "named": true
+          },
+          {
+            "type": "opApp",
+            "named": true
+          },
+          {
+            "type": "opIntersection",
             "named": true
           },
           {
@@ -797,76 +819,141 @@
   {
     "type": "opApp",
     "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "bracket",
-          "named": true
-        },
-        {
-          "type": "commentBlock",
-          "named": true
-        },
-        {
-          "type": "commentLine",
-          "named": true
-        },
-        {
-          "type": "erased",
-          "named": true
-        },
-        {
-          "type": "erasedLambda",
-          "named": true
-        },
-        {
-          "type": "intersectionT",
-          "named": true
-        },
-        {
-          "type": "lambda",
-          "named": true
-        },
-        {
-          "type": "levelT",
-          "named": true
-        },
-        {
-          "type": "named",
-          "named": true
-        },
-        {
-          "type": "nat",
-          "named": true
-        },
-        {
-          "type": "opApp",
-          "named": true
-        },
-        {
-          "type": "opIntersection",
-          "named": true
-        },
-        {
-          "type": "opTyped",
-          "named": true
-        },
-        {
-          "type": "postIntersection",
-          "named": true
-        },
-        {
-          "type": "sym",
-          "named": true
-        },
-        {
-          "type": "universe",
-          "named": true
-        }
-      ]
+    "fields": {
+      "erasure": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "erased",
+            "named": true
+          }
+        ]
+      },
+      "fun": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket",
+            "named": true
+          },
+          {
+            "type": "commentBlock",
+            "named": true
+          },
+          {
+            "type": "commentLine",
+            "named": true
+          },
+          {
+            "type": "erasedLambda",
+            "named": true
+          },
+          {
+            "type": "intersectionT",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "levelT",
+            "named": true
+          },
+          {
+            "type": "named",
+            "named": true
+          },
+          {
+            "type": "nat",
+            "named": true
+          },
+          {
+            "type": "opApp",
+            "named": true
+          },
+          {
+            "type": "opIntersection",
+            "named": true
+          },
+          {
+            "type": "postIntersection",
+            "named": true
+          },
+          {
+            "type": "sym",
+            "named": true
+          },
+          {
+            "type": "universe",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "bracket",
+            "named": true
+          },
+          {
+            "type": "commentBlock",
+            "named": true
+          },
+          {
+            "type": "commentLine",
+            "named": true
+          },
+          {
+            "type": "erasedLambda",
+            "named": true
+          },
+          {
+            "type": "intersectionT",
+            "named": true
+          },
+          {
+            "type": "lambda",
+            "named": true
+          },
+          {
+            "type": "levelT",
+            "named": true
+          },
+          {
+            "type": "named",
+            "named": true
+          },
+          {
+            "type": "nat",
+            "named": true
+          },
+          {
+            "type": "opApp",
+            "named": true
+          },
+          {
+            "type": "opIntersection",
+            "named": true
+          },
+          {
+            "type": "postIntersection",
+            "named": true
+          },
+          {
+            "type": "sym",
+            "named": true
+          },
+          {
+            "type": "universe",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -919,81 +1006,6 @@
         },
         {
           "type": "opIntersection",
-          "named": true
-        },
-        {
-          "type": "opTyped",
-          "named": true
-        },
-        {
-          "type": "postIntersection",
-          "named": true
-        },
-        {
-          "type": "sym",
-          "named": true
-        },
-        {
-          "type": "universe",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "opTyped",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "bracket",
-          "named": true
-        },
-        {
-          "type": "commentBlock",
-          "named": true
-        },
-        {
-          "type": "commentLine",
-          "named": true
-        },
-        {
-          "type": "erasedLambda",
-          "named": true
-        },
-        {
-          "type": "intersectionT",
-          "named": true
-        },
-        {
-          "type": "lambda",
-          "named": true
-        },
-        {
-          "type": "levelT",
-          "named": true
-        },
-        {
-          "type": "named",
-          "named": true
-        },
-        {
-          "type": "nat",
-          "named": true
-        },
-        {
-          "type": "opApp",
-          "named": true
-        },
-        {
-          "type": "opIntersection",
-          "named": true
-        },
-        {
-          "type": "opTyped",
           "named": true
         },
         {
@@ -1064,10 +1076,6 @@
           "named": true
         },
         {
-          "type": "opTyped",
-          "named": true
-        },
-        {
           "type": "postIntersection",
           "named": true
         },
@@ -1134,7 +1142,7 @@
     "named": false
   },
   {
-    "type": ":>",
+    "type": ": ",
     "named": false
   },
   {

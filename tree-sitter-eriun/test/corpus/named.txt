@@ -2,16 +2,19 @@
  named
 =======
 
-@a = 123; -- comment
-@b = 456;
+@a: #U 1 = #U 0; -- comment
+a
 
 ---
 
 (expr
 	(named
 		(sym)
-		(nat)
+		(universe
+			(levels
+				(nat)))
+		(universe
+			(levels
+				(nat)))
 		(commentLine)
-		(named
-			(sym)
-			(nat))))
+		(sym)))

@@ -4,7 +4,7 @@ module Parser (parse, parseShow, parseExamples) where
 import Text.Parsec.String
 import Text.Parsec.Char
 import Text.Parsec hiding (parse)
-import Lib (Sym, Expr (..), Levels, showLam, AsT (..), app, app')
+import Lib (Sym, Expr (..), Levels, showLam, AsT (..), app, app', lamDepth)
 import Data.Functor
 import Data.Map.Strict (fromList)
 import qualified Text.Parsec as P
@@ -34,9 +34,11 @@ sym = do
 
 named :: Parser (Expr Info)
 named = do
-  s <- char '@' *> sym <* spaces <* char '='
-  v <- expr <* char ';' <* spaces <* comments
-  (Let s v <$> expr) <|> return v
+  s <- char '@' *> sym <* spaces
+  t <- char ':' *> spaces *> expr <* spaces
+  v <- char '=' *> expr <* char ';' <* spaces <* comments
+  let d = lamDepth t
+  Let s d t v <$> expr
 
 special :: Parser (Expr Info)
 special = char '#' *> (levelT <|> universe <|> level)
@@ -119,8 +121,7 @@ opExpr = foldl' (.) id ops postExpr
     where
       opApp = associate ALeft [("", app), ("'", app')]
       opIntersect = associate ARight [("^", Inter)]
-      opType = associate ANone [(":>", Typed)]
-      ops = [opType, opIntersect, opApp]
+      ops = [opIntersect, opApp]
 
 expr :: Parser (Expr Info)
 expr = opExpr

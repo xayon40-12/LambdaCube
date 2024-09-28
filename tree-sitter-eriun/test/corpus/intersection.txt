@@ -2,38 +2,40 @@
  intersection
 ==============
 
-(A: #U 0) (B: (A) #U 0) (a: A) (b: B a) (a: A /\ B a) :> a ^ b
+@Int: (A: #U 0) (B: (A) #U 0) (a: A) (b: B a) (a: A /\ B a) = a ^ b;
+Int
 
 ---
-
 (expr
-  (lambda
+  (named
     (sym)
-    (universe
-      (levels
-        (nat)))
     (lambda
       (sym)
+      (universe
+        (levels
+          (nat)))
       (lambda
-        (sym)
-        (universe
-          (levels
-            (nat))))
-      (lambda
-        (sym)
         (sym)
         (lambda
           (sym)
-          (opApp
+          (universe
+            (levels
+              (nat))))
+        (lambda
+          (sym)
+          (sym)
+          (lambda
             (sym)
-            (sym))
-          (opTyped
+            (opApp
+              (sym)
+              (sym))
             (intersectionT
               (sym)
               (sym)
               (opApp
                 (sym)
-                (sym)))
-            (opIntersection
-              (sym)
-              (sym))))))))
+                (sym)))))))
+    (opIntersection
+      (sym)
+      (sym))
+    (sym)))

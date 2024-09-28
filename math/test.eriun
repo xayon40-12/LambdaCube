@@ -1,25 +1,41 @@
-@Equal = <i: #L> <A: #U i> (a: A) (b: A) #U i+1 :>
-  (P: (a: A) #U i) (p: P a) P b;
-@refl = <i: #L> <A: #U i> (a: A) Equal 'i 'A a a :>
-  (P: (a: A) #U i) (p: P a) p;
-@rho = <i: #L> (T: #U i) (t1: T) (t2: T) (e: Equal 'i 'T t1 t2) (Tt: (t: T) #U i) (t: Tt t1) Tt t2 :>
-  e [(t: T) Tt t] t;
-@symm = <i: #L> (A: #U i) (a: A) (b: A) (e: Equal '#i+1 'A a b) Equal 'i 'A b a :> -- WARNING: should `e` be of level #i+1
-  (P: (a: A) #U i) e [(x: A) (p: P x) P a] [refl 'i 'A a P];
+@Equal: <i: #L> <A: #U i> (a: A) (b: A) #U i+1
+  = (P: (a: A) #U i) (p: P a) P b;
+@refl: <i: #L> <A: #U i> (a: A) Equal 'i 'A a a
+  = (P: (a: A) #U i) (p: P a) p;
+@rho: <i: #L> (T: #U i) (t1: T) (t2: T) (e: Equal 'i 'T t1 t2) (Tt: (t: T) #U i) (t: Tt t1) Tt t2
+  = e [(t: T) Tt t] t;
+@symm: <i: #L> (A: #U i) (a: A) (b: A) (e: Equal '#i+1 'A a b) Equal 'i 'A b a
+  = (P: (a: A) #U i) e [(x: A) (p: P x) P a] [refl 'i 'A a P];
 
-@CNat = <i: #L> <P: #U i> (s: (p: P) P) (z: P) #U i :> P;
-@cZero = CNat :> <i: #L> <P: #U i> (s: (p: P) P) (z: P) z;
-@cSucc = (n: CNat) CNat :> <i: #L> <P: #U i> (s: (p: P) P) (z: P) s [n 'i 'P s z];
-@cOne = CNat :> <i: #L> <P: #U i> (s: (p: P) P) (z: P) s z;
-@cTwo = CNat :> <i: #L> <P: #U i> (s: (p: P) P) (z: P) s [s z];
-@cPlus = (a: CNat) (b: CNat) CNat :> <i: #L> <P: #U i> (s: (p: P) P) (z: P) a 'i 'P s [b 'i 'P s z];
-@cPlusP = (b: CNat) (a: CNat) CNat :> <i: #L> <P: #U i> (s: (p: P) P) (z: P) a 'i 'P s [b 'i 'P s z];
-@cWrap = (n: CNat) CNat :> <i: #L> <P: #U i> (s: (p: P) P) (z: P) n 'i 'P s z;
+@CNat: <i: #L> <P: #U i> (s: (p: P) P) (z: P) #U i
+  = P;
+@cZero: CNat
+  = <i: #L> <P: #U i> (s: (p: P) P) (z: P) z;
+@cSucc: (n: CNat) CNat
+  = <i: #L> <P: #U i> (s: (p: P) P) (z: P) s [n 'i 'P s z];
+@cOne: CNat
+  = <i: #L> <P: #U i> (s: (p: P) P) (z: P) s z;
+@cTwo: CNat
+  = <i: #L> <P: #U i> (s: (p: P) P) (z: P) s [s z];
+@cPlus: (a: CNat) (b: CNat) CNat
+  = <i: #L> <P: #U i> (s: (p: P) P) (z: P) a 'i 'P s [b 'i 'P s z];
+@cPlusP: (b: CNat) (a: CNat) CNat
+  = <i: #L> <P: #U i> (s: (p: P) P) (z: P) a 'i 'P s [b 'i 'P s z];
+@cWrap: (n: CNat) CNat
+  = <i: #L> <P: #U i> (s: (p: P) P) (z: P) n 'i 'P s z;
 
-@prop0 = <i: #L> <P: #U i> (s: (p: P) P) (z: P) (n: CNat) Equal '#i+1 'P [cWrap n 'i 'P s z] [n 'i 'P s z] :> refl '#i+1 'P [n 'i 'P s z];
-@prop1 = <i: #L> Equal '#i+1 '[CNat 'i] [cOne 'i] [cSucc cZero 'i] :> refl '#i+1 '[CNat 'i] [cOne 'i];
-@prop2 = <i: #L> Equal '#i+1 '[CNat 'i] [cPlus cOne cOne 'i] [cTwo 'i] :> refl '#i+1 '[CNat 'i] [cTwo 'i];
-@prop3 = <i: #L> Equal '#i+1 '[CNat 'i] [cZero 'i] [cPlus cZero cZero 'i] :> refl '#i+1 '[CNat 'i] [cZero 'i];
-@prop4 = <i: #L> (n: CNat) Equal '#i+1 '[CNat 'i] [cWrap n 'i] [cPlus cZero n 'i] :> refl '#i+1 '[CNat 'i] [cWrap n 'i];
-@prop5 = <i: #L> (n: CNat) Equal '#i+1 '[CNat 'i] [cSucc n 'i] [cPlus cZero [cSucc n] 'i] :> refl '#i+1 '[CNat 'i] [cSucc n 'i];
-@prop6 = <i: #L> (n: CNat) (e: Equal '#i+1 '[CNat 'i] [cWrap n 'i] [cPlus cZero n 'i]) Equal '#i+1 '[CNat 'i] [cWrap [cSucc n] 'i] [cPlus cZero [cSucc n] 'i] :> refl '#i+1 '[CNat 'i] [cWrap [cSucc n] 'i];
+@prop0: <i: #L> <P: #U i> (s: (p: P) P) (z: P) (n: CNat) Equal '#i+1 'P [cWrap n 'i 'P s z] [n 'i 'P s z]
+  = refl '#i+1 'P [n 'i 'P s z];
+@prop1: <i: #L> Equal '#i+1 '[CNat 'i] [cOne 'i] [cSucc cZero 'i]
+  = refl '#i+1 '[CNat 'i] [cOne 'i];
+@prop2: <i: #L> Equal '#i+1 '[CNat 'i] [cPlus cOne cOne 'i] [cTwo 'i]
+  = refl '#i+1 '[CNat 'i] [cTwo 'i];
+@prop3: <i: #L> Equal '#i+1 '[CNat 'i] [cZero 'i] [cPlus cZero cZero 'i]
+  = refl '#i+1 '[CNat 'i] [cZero 'i];
+@prop4: <i: #L> (n: CNat) Equal '#i+1 '[CNat 'i] [cWrap n 'i] [cPlus cZero n 'i]
+  = refl '#i+1 '[CNat 'i] [cWrap n 'i];
+@prop5: <i: #L> (n: CNat) Equal '#i+1 '[CNat 'i] [cSucc n 'i] [cPlus cZero [cSucc n] 'i]
+  = refl '#i+1 '[CNat 'i] [cSucc n 'i];
+@prop6: <i: #L> (n: CNat) (e: Equal '#i+1 '[CNat 'i] [cWrap n 'i] [cPlus cZero n 'i]) Equal '#i+1 '[CNat 'i] [cWrap [cSucc n] 'i] [cPlus cZero [cSucc n] 'i]
+  = refl '#i+1 '[CNat 'i] [cWrap [cSucc n] 'i];
+prop6

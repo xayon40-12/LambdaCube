@@ -1,4 +1,4 @@
-(A: #U 0) (B: (A) #U 0) (a: A) (b: B a) (a: A /\ B a) :> a ^ b
---                                       ^ variable.parameter
---                                            ^ keyword.function
---                                                         ^ operator
+@Int: (A: #U 0) (B: (A) #U 0) (a: A) (b: B a) (a: A /\ B a) = a ^ b
+--                                             ^ variable.parameter
+--                                                  ^ keyword.function
+--                                                              ^ operator
